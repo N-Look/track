@@ -17,9 +17,9 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen flex-col md:flex-row">
       <Nav userEmail={user.email ?? ""} />
-      <main className="flex-1 overflow-auto p-6 md:p-8">{children}</main>
+      <main className="flex-1 overflow-auto p-4 pt-6 md:p-8">{children}</main>
     </div>
   );
 }

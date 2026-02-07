@@ -27,7 +27,7 @@ export async function createDebt(formData: FormData) {
   });
 
   if (error) throw new Error(error.message);
-  revalidatePath("/debts");
+  revalidatePath("/balances");
   revalidatePath("/dashboard");
 }
 
@@ -40,7 +40,7 @@ export async function markDebtAsPaid(debtId: string) {
     .eq("id", debtId);
 
   if (error) throw new Error(error.message);
-  revalidatePath("/debts");
+  revalidatePath("/balances");
   revalidatePath("/dashboard");
 }
 
@@ -50,6 +50,6 @@ export async function deleteDebt(id: string) {
   const { error } = await supabase.from("debts").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/debts");
+  revalidatePath("/balances");
   revalidatePath("/dashboard");
 }

@@ -3,13 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function markSplitAsPaid(splitId: string) {
+export async function markSplitAsPaid(
+  splitId: string,
+  receivingAccountId: string | null
+) {
   const supabase = await createClient();
 
-  // Get the split with its transaction to find the account
   const { data: split } = await supabase
     .from("splits")
-    .select("*, transactions(account_id)")
+    .select("*")
     .eq("id", splitId)
     .single();
 
@@ -23,28 +25,31 @@ export async function markSplitAsPaid(splitId: string) {
 
   if (error) throw new Error(error.message);
 
-  // Add amount back to account balance (skip credit cards)
-  const accountId = (split.transactions as { account_id: string | null })
-    ?.account_id;
-  if (accountId) {
+  // Credit the receiving account
+  if (receivingAccountId) {
     const { data: account } = await supabase
       .from("accounts")
       .select("current_balance, category")
-      .eq("id", accountId)
+      .eq("id", receivingAccountId)
       .single();
 
-    if (account && account.category !== "credit_card") {
-      const newBalance = (account.current_balance ?? 0) + split.amount_owed;
+    if (account) {
+      // Credit cards: subtract (paying off balance), others: add
+      const newBalance =
+        account.category === "credit_card"
+          ? (account.current_balance ?? 0) - split.amount_owed
+          : (account.current_balance ?? 0) + split.amount_owed;
       await supabase
         .from("accounts")
         .update({
           current_balance: newBalance,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", accountId);
+        .eq("id", receivingAccountId);
     }
   }
 
-  revalidatePath("/owed");
+  revalidatePath("/balances");
   revalidatePath("/dashboard");
+  revalidatePath("/accounts");
 }

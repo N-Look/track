@@ -15,8 +15,7 @@ import {
 import {
   LayoutDashboard,
   ArrowLeftRight,
-  HandCoins,
-  Wallet,
+  Users,
   Landmark,
   User,
   LogOut,
@@ -29,8 +28,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
-  { href: "/owed", label: "Owed to Me", icon: HandCoins },
-  { href: "/debts", label: "I Owe", icon: Wallet },
+  { href: "/balances", label: "Balances", icon: Users },
   { href: "/accounts", label: "Accounts", icon: Landmark },
 ];
 

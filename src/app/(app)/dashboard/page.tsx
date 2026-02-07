@@ -12,22 +12,21 @@ const currencySymbols: Record<string, string> = {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ data: accounts }, { data: splits }, { data: recentTx }, { data: offsets }, { data: debts }] =
+  const [{ data: accounts }, { data: splits }, { data: recentTx }, { data: debts }] =
     await Promise.all([
       supabase.from("accounts").select("*").order("name"),
       supabase
         .from("splits")
-        .select("amount_owed, transactions(currency)")
+        .select("amount_owed, debtor_name, transactions(currency)")
         .eq("is_paid", false),
       supabase
         .from("transactions")
         .select("*")
         .order("transaction_date", { ascending: false })
         .limit(5),
-      supabase.from("offsets").select("amount, currency"),
       supabase
         .from("debts")
-        .select("amount, currency")
+        .select("amount, currency, creditor_name")
         .eq("is_paid", false),
     ]);
 
@@ -42,22 +41,26 @@ export default async function DashboardPage() {
     {} as Record<string, typeof accounts>
   );
 
-  // Calculate totals owed per currency (net of offsets)
-  const owedByCurrency: Record<string, number> = {};
+  // Calculate per-person net balances
+  const personBalances: Record<string, Record<string, number>> = {};
+
   (splits ?? []).forEach((s) => {
+    const name = s.debtor_name;
     const currency =
       (s.transactions as { currency: string } | null)?.currency ?? "CAD";
-    owedByCurrency[currency] = (owedByCurrency[currency] ?? 0) + s.amount_owed;
-  });
-  (offsets ?? []).forEach((o) => {
-    owedByCurrency[o.currency] = (owedByCurrency[o.currency] ?? 0) - o.amount;
+    if (!personBalances[name]) personBalances[name] = {};
+    personBalances[name][currency] =
+      (personBalances[name][currency] ?? 0) + s.amount_owed;
   });
 
-  // Calculate totals user owes per currency
-  const youOweByCurrency: Record<string, number> = {};
   (debts ?? []).forEach((d) => {
-    youOweByCurrency[d.currency] = (youOweByCurrency[d.currency] ?? 0) + d.amount;
+    const name = d.creditor_name;
+    if (!personBalances[name]) personBalances[name] = {};
+    personBalances[name][d.currency] =
+      (personBalances[name][d.currency] ?? 0) - d.amount;
   });
+
+  const sortedPeople = Object.keys(personBalances).sort();
 
   // Calculate total balances per currency (exclude credit cards)
   const totalsByCurrency: Record<string, number> = {};
@@ -91,39 +94,42 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         ))}
-        {Object.entries(owedByCurrency).map(([currency, total]) => (
-          <Card key={`owed-${currency}`}>
+        {sortedPeople.map((name) => (
+          <Card key={`person-${name}`}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Owed to You ({currency})
+                {name}
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {currencySymbols[currency] ?? "$"}
-                {total.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {Object.entries(youOweByCurrency).map(([currency, total]) => (
-          <Card key={`youowe-${currency}`}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                You Owe ({currency})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                {currencySymbols[currency] ?? "$"}
-                {total.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </div>
+            <CardContent className="space-y-1">
+              {Object.entries(personBalances[name]).map(([currency, net]) => (
+                <div key={currency}>
+                  <div
+                    className={`text-2xl font-bold ${
+                      net > 0
+                        ? "text-green-600 dark:text-green-400"
+                        : net < 0
+                          ? "text-orange-600 dark:text-orange-400"
+                          : ""
+                    }`}
+                  >
+                    {net > 0 ? "+" : ""}
+                    {currencySymbols[currency] ?? "$"}
+                    {Math.abs(net).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {net > 0
+                      ? "They owe you"
+                      : net < 0
+                        ? "You owe them"
+                        : "Settled"}{" "}
+                    ({currency})
+                  </p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         ))}

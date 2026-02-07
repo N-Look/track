@@ -80,36 +80,6 @@ export type Database = {
         }
         Relationships: []
       }
-      offsets: {
-        Row: {
-          amount: number
-          created_at: string | null
-          currency: Database["public"]["Enums"]["currency_type"]
-          debtor_name: string
-          description: string | null
-          id: string
-          user_id: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string | null
-          currency?: Database["public"]["Enums"]["currency_type"]
-          debtor_name: string
-          description?: string | null
-          id?: string
-          user_id: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string | null
-          currency?: Database["public"]["Enums"]["currency_type"]
-          debtor_name?: string
-          description?: string | null
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       splits: {
         Row: {
           amount_owed: number

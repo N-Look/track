@@ -64,44 +64,110 @@ export function DebtTable({ debts }: { debts: Tables<"debts">[] }) {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Amount</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
+    <>
+      {/* Desktop table */}
+      <div className="hidden md:block">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Amount</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {debts.map((debt) => {
+              const symbol = currencySymbols[debt.currency] ?? "$";
+              return (
+                <TableRow key={debt.id}>
+                  <TableCell>
+                    {symbol}
+                    {debt.amount.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      {debt.currency}
+                    </span>
+                  </TableCell>
+                  <TableCell>{debt.description ?? "—"}</TableCell>
+                  <TableCell>
+                    {debt.created_at
+                      ? new Date(debt.created_at).toLocaleDateString()
+                      : "—"}
+                  </TableCell>
+                  <TableCell>
+                    {debt.is_paid ? (
+                      <Badge variant="secondary">Paid</Badge>
+                    ) : (
+                      <Badge variant="destructive">Unpaid</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {!debt.is_paid && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={loadingId === debt.id}
+                          onClick={() => handleMarkPaid(debt.id)}
+                        >
+                          <Check className="mr-1 h-3 w-3" />
+                          {loadingId === debt.id ? "..." : "Mark Paid"}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={loadingId === debt.id}
+                        onClick={() => handleDelete(debt.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Mobile cards */}
+      <div className="space-y-3 md:hidden">
         {debts.map((debt) => {
           const symbol = currencySymbols[debt.currency] ?? "$";
           return (
-            <TableRow key={debt.id}>
-              <TableCell>
-                {symbol}
-                {debt.amount.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                })}
-                <span className="ml-1 text-xs text-muted-foreground">
-                  {debt.currency}
-                </span>
-              </TableCell>
-              <TableCell>{debt.description ?? "—"}</TableCell>
-              <TableCell>
-                {debt.created_at
-                  ? new Date(debt.created_at).toLocaleDateString()
-                  : "—"}
-              </TableCell>
-              <TableCell>
+            <div
+              key={debt.id}
+              className="rounded-lg border p-4 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-lg font-bold">
+                  {symbol}
+                  {debt.amount.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                  })}
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    {debt.currency}
+                  </span>
+                </div>
                 {debt.is_paid ? (
                   <Badge variant="secondary">Paid</Badge>
                 ) : (
                   <Badge variant="destructive">Unpaid</Badge>
                 )}
-              </TableCell>
-              <TableCell>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {debt.description ?? "—"}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {debt.created_at
+                    ? new Date(debt.created_at).toLocaleDateString()
+                    : "—"}
+                </span>
                 <div className="flex gap-1">
                   {!debt.is_paid && (
                     <Button
@@ -123,11 +189,11 @@ export function DebtTable({ debts }: { debts: Tables<"debts">[] }) {
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
-              </TableCell>
-            </TableRow>
+              </div>
+            </div>
           );
         })}
-      </TableBody>
-    </Table>
+      </div>
+    </>
   );
 }

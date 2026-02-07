@@ -85,9 +85,9 @@ export function TransactionList({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
         <Select value={filterAccount} onValueChange={setFilterAccount}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="sm:w-[180px]">
             <SelectValue placeholder="All Accounts" />
           </SelectTrigger>
           <SelectContent>
@@ -100,7 +100,7 @@ export function TransactionList({
           </SelectContent>
         </Select>
         <Select value={filterCurrency} onValueChange={setFilterCurrency}>
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="sm:w-[120px]">
             <SelectValue placeholder="Currency" />
           </SelectTrigger>
           <SelectContent>
@@ -115,84 +115,143 @@ export function TransactionList({
           placeholder="From"
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
-          className="w-[160px]"
+          className="sm:w-[160px]"
         />
         <Input
           type="date"
           placeholder="To"
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
-          className="w-[160px]"
+          className="sm:w-[160px]"
         />
       </div>
 
-      {/* Table */}
       {filtered.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">
           No transactions found.
         </p>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Account</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((tx) => {
-                const symbol = currencySymbols[tx.currency] ?? "$";
-                return (
-                  <TableRow key={tx.id}>
-                    <TableCell className="whitespace-nowrap">
-                      {tx.transaction_date ?? "—"}
-                    </TableCell>
-                    <TableCell>{tx.description}</TableCell>
-                    <TableCell>{tx.accounts?.name ?? "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap font-medium">
-                      {symbol}
-                      {tx.amount.toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {tx.is_repayment && (
-                          <Badge variant="secondary">Repayment</Badge>
-                        )}
-                        {tx.splits.length > 0 && (
-                          <Badge variant="outline">
-                            Split ({tx.splits.length})
-                          </Badge>
-                        )}
-                        {(tx.fee_lost ?? 0) > 0 && (
-                          <Badge variant="destructive">
-                            Fee: ${tx.fee_lost}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={deletingId === tx.id}
-                        onClick={() => handleDelete(tx.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Tags</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((tx) => {
+                  const symbol = currencySymbols[tx.currency] ?? "$";
+                  return (
+                    <TableRow key={tx.id}>
+                      <TableCell className="whitespace-nowrap">
+                        {tx.transaction_date ?? "—"}
+                      </TableCell>
+                      <TableCell>{tx.description}</TableCell>
+                      <TableCell>{tx.accounts?.name ?? "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap font-medium">
+                        {symbol}
+                        {tx.amount.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {tx.is_repayment && (
+                            <Badge variant="secondary">Repayment</Badge>
+                          )}
+                          {tx.splits.length > 0 && (
+                            <Badge variant="outline">
+                              Split ({tx.splits.length})
+                            </Badge>
+                          )}
+                          {(tx.fee_lost ?? 0) > 0 && (
+                            <Badge variant="destructive">
+                              Fee: ${tx.fee_lost}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={deletingId === tx.id}
+                          onClick={() => handleDelete(tx.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="space-y-3 md:hidden">
+            {filtered.map((tx) => {
+              const symbol = currencySymbols[tx.currency] ?? "$";
+              return (
+                <div
+                  key={tx.id}
+                  className="rounded-lg border p-4 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{tx.description}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {tx.transaction_date ?? "—"}
+                        {tx.accounts?.name ? ` · ${tx.accounts.name}` : ""}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-semibold">
+                        {symbol}
+                        {tx.amount.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap gap-1">
+                      {tx.is_repayment && (
+                        <Badge variant="secondary">Repayment</Badge>
+                      )}
+                      {tx.splits.length > 0 && (
+                        <Badge variant="outline">
+                          Split ({tx.splits.length})
+                        </Badge>
+                      )}
+                      {(tx.fee_lost ?? 0) > 0 && (
+                        <Badge variant="destructive">
+                          Fee: ${tx.fee_lost}
+                        </Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      disabled={deletingId === tx.id}
+                      onClick={() => handleDelete(tx.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
