@@ -163,7 +163,7 @@ export function TransactionForm({
           </div>
 
           {/* Mode toggles */}
-          <div className="space-y-3 rounded-md border p-3">
+          <div className="space-y-3 glass-light rounded-xl p-3">
             <div className="flex items-center justify-between">
               <Label htmlFor="repayment">Repayment</Label>
               <Switch
@@ -223,7 +223,7 @@ export function TransactionForm({
                   required
                 />
               </div>
-              <div className="rounded-md bg-muted p-2 text-sm">
+              <div className="glass-light rounded-lg p-2 text-sm">
                 Fee Lost: <strong>${feeLost}</strong>
               </div>
             </div>

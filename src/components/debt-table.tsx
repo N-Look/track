@@ -141,7 +141,7 @@ export function DebtTable({ debts }: { debts: Tables<"debts">[] }) {
           return (
             <div
               key={debt.id}
-              className="rounded-lg border p-4 space-y-2"
+              className="glass rounded-xl p-4 space-y-2"
             >
               <div className="flex items-center justify-between">
                 <div className="text-lg font-bold">

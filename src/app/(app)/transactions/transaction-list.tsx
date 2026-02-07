@@ -133,7 +133,7 @@ export function TransactionList({
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block rounded-md border">
+          <div className="hidden md:block glass rounded-xl overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -202,7 +202,7 @@ export function TransactionList({
               return (
                 <div
                   key={tx.id}
-                  className="rounded-lg border p-4 space-y-2"
+                  className="glass rounded-xl p-4 space-y-2"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">

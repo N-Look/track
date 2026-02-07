@@ -47,7 +47,7 @@ export function Nav({ userEmail }: { userEmail: string }) {
   return (
     <>
       {/* Mobile header */}
-      <div className="flex items-center justify-between border-b px-4 py-3 md:hidden">
+      <div className="glass flex items-center justify-between px-4 py-3 md:hidden">
         <span className="text-lg font-semibold">Ledger</span>
         <Button
           variant="ghost"
@@ -61,7 +61,7 @@ export function Nav({ userEmail }: { userEmail: string }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r bg-background transition-transform md:static md:translate-x-0",
+          "glass-sidebar fixed inset-y-0 left-0 z-40 flex w-64 flex-col transition-transform md:static md:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -78,10 +78,10 @@ export function Nav({ userEmail }: { userEmail: string }) {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "glass-active text-primary"
+                    : "text-muted-foreground hover:bg-[var(--glass-bg)] hover:text-foreground"
                 )}
               >
                 <item.icon className="h-4 w-4" />
@@ -115,7 +115,7 @@ export function Nav({ userEmail }: { userEmail: string }) {
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}

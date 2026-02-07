@@ -181,7 +181,7 @@ export function SplitTable({
           return (
             <div
               key={split.id}
-              className="rounded-lg border p-4 space-y-2"
+              className="glass rounded-xl p-4 space-y-2"
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium">{split.debtor_name}</span>

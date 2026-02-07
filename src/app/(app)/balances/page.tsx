@@ -2,7 +2,6 @@ import { createClient } from "@/lib/supabase/server";
 import { SplitTable } from "@/components/split-table";
 import { DebtForm } from "@/components/debt-form";
 import { DebtTable } from "@/components/debt-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const currencySymbols: Record<string, string> = {
@@ -98,60 +97,95 @@ export default async function BalancesPage() {
 
       {/* Summary cards per person */}
       {personSummaries.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {personSummaries.map(({ name, netByCurrency }) => (
-            <Card key={name}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">{name}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-1">
-                {Object.entries(netByCurrency).map(([currency, net]) => (
-                  <div key={currency}>
-                    <div
-                      className={`text-lg font-bold ${
-                        net > 0
-                          ? "text-green-600 dark:text-green-400"
-                          : net < 0
-                            ? "text-orange-600 dark:text-orange-400"
-                            : ""
-                      }`}
-                    >
-                      {net > 0 ? "+" : ""}
-                      {currencySymbols[currency] ?? "$"}
-                      {Math.abs(net).toLocaleString("en-US", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {personSummaries.map(({ name, netByCurrency }) => {
+            const totalNet = Object.values(netByCurrency).reduce((a, b) => a + b, 0);
+            const isPositive = totalNet > 0;
+            const isNegative = totalNet < 0;
+            return (
+            <div
+              key={name}
+              className={`glass rounded-2xl p-4 flex items-center gap-4 ${
+                isPositive ? "glow-positive" : isNegative ? "glow-negative" : ""
+              }`}
+            >
+              <div
+                className={`flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                  isPositive
+                    ? "bg-green-500/15 text-green-600 dark:text-green-400 ring-1 ring-green-500/30"
+                    : isNegative
+                      ? "bg-orange-500/15 text-orange-600 dark:text-orange-400 ring-1 ring-orange-500/30"
+                      : "bg-[var(--glass-bg-light)] text-muted-foreground ring-1 ring-[var(--glass-border)]"
+                }`}
+              >
+                {name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold truncate">{name}</p>
+                <div className="mt-0.5 space-y-0.5">
+                  {Object.entries(netByCurrency).map(([currency, net]) => (
+                    <div key={currency} className="flex items-baseline gap-1.5">
+                      <span
+                        className={`text-lg font-bold tabular-nums ${
+                          net > 0
+                            ? "text-green-600 dark:text-green-400"
+                            : net < 0
+                              ? "text-orange-600 dark:text-orange-400"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        {net > 0 ? "+" : net < 0 ? "\u2212" : ""}
+                        {currencySymbols[currency] ?? "$"}
+                        {Math.abs(net).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {net > 0 ? "owes you" : net < 0 ? "you owe" : "settled"}
+                      </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {net > 0
-                        ? "They owe you"
-                        : net < 0
-                          ? "You owe them"
-                          : "Settled"}
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          ))}
+                  ))}
+                </div>
+              </div>
+            </div>
+            );
+          })}
         </div>
       ) : (
         <p className="text-muted-foreground">No outstanding balances.</p>
       )}
 
-      {/* Tabs per person with splits + debts detail */}
+      {/* Detail per person */}
       {personSummaries.length > 0 && (
         <Tabs defaultValue={personSummaries[0].name}>
-          <TabsList className="w-full max-w-full overflow-x-auto justify-start">
-            {personSummaries.map(({ name }) => (
-              <TabsTrigger key={name} value={name}>
-                {name}
-              </TabsTrigger>
-            ))}
+          <TabsList variant="line" className="flex flex-wrap gap-2 h-auto p-0 bg-transparent">
+            {personSummaries.map(({ name, netByCurrency }) => {
+              const totalNet = Object.values(netByCurrency).reduce((a, b) => a + b, 0);
+              const isPositive = totalNet > 0;
+              const isNegative = totalNet < 0;
+              return (
+                <TabsTrigger
+                  key={name}
+                  value={name}
+                  className="cursor-pointer !rounded-full px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-all after:!hidden !h-auto inline-flex items-center gap-2 data-[state=active]:!bg-[var(--glass-bg-heavy)] data-[state=active]:!backdrop-blur-xl data-[state=active]:!border-[var(--glass-border)] data-[state=active]:!text-foreground data-[state=active]:!shadow-sm"
+                >
+                  <span
+                    className={`inline-block size-2 rounded-full ${
+                      isPositive
+                        ? "bg-green-500"
+                        : isNegative
+                          ? "bg-orange-500"
+                          : "bg-muted-foreground"
+                    }`}
+                  />
+                  {name}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
           {personSummaries.map(({ name }) => (
-            <TabsContent key={name} value={name} className="space-y-6">
+            <TabsContent key={name} value={name} className="space-y-6 mt-4">
               {(splitsByPerson[name] ?? []).length > 0 && (
                 <div>
                   <h3 className="mb-2 text-sm font-semibold text-muted-foreground">

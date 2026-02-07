@@ -94,45 +94,61 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         ))}
-        {sortedPeople.map((name) => (
-          <Card key={`person-${name}`}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              {Object.entries(personBalances[name]).map(([currency, net]) => (
-                <div key={currency}>
-                  <div
-                    className={`text-2xl font-bold ${
-                      net > 0
-                        ? "text-green-600 dark:text-green-400"
-                        : net < 0
-                          ? "text-orange-600 dark:text-orange-400"
-                          : ""
-                    }`}
-                  >
-                    {net > 0 ? "+" : ""}
-                    {currencySymbols[currency] ?? "$"}
-                    {Math.abs(net).toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+        {sortedPeople.map((name) => {
+          const nets = Object.values(personBalances[name]);
+          const totalNet = nets.reduce((a, b) => a + b, 0);
+          const isPositive = totalNet > 0;
+          const isNegative = totalNet < 0;
+          return (
+          <div
+            key={`person-${name}`}
+            className={`glass rounded-2xl p-4 flex items-center gap-4 ${
+              isPositive ? "glow-positive" : isNegative ? "glow-negative" : ""
+            }`}
+          >
+            <div
+              className={`flex size-11 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                isPositive
+                  ? "bg-green-500/15 text-green-600 dark:text-green-400 ring-1 ring-green-500/30"
+                  : isNegative
+                    ? "bg-orange-500/15 text-orange-600 dark:text-orange-400 ring-1 ring-orange-500/30"
+                    : "bg-[var(--glass-bg-light)] text-muted-foreground ring-1 ring-[var(--glass-border)]"
+              }`}
+            >
+              {name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold truncate">{name}</p>
+              <div className="mt-0.5 space-y-0.5">
+                {Object.entries(personBalances[name]).map(([currency, net]) => (
+                  <div key={currency} className="flex items-baseline gap-1.5">
+                    <span
+                      className={`text-lg font-bold tabular-nums ${
+                        net > 0
+                          ? "text-green-600 dark:text-green-400"
+                          : net < 0
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {net > 0 ? "+" : net < 0 ? "\u2212" : ""}
+                      {currencySymbols[currency] ?? "$"}
+                      {Math.abs(net).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {net > 0 ? "owes you" : net < 0 ? "you owe" : "settled"}
+                      {" "}({currency})
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {net > 0
-                      ? "They owe you"
-                      : net < 0
-                        ? "You owe them"
-                        : "Settled"}{" "}
-                    ({currency})
-                  </p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
+                ))}
+              </div>
+            </div>
+          </div>
+          );
+        })}
       </div>
 
       {/* Accounts by currency */}
@@ -165,7 +181,7 @@ export default async function DashboardPage() {
             {recentTx!.map((tx) => (
               <div
                 key={tx.id}
-                className="flex items-center justify-between rounded-md border px-4 py-3"
+                className="glass flex items-center justify-between rounded-xl px-4 py-3"
               >
                 <div>
                   <p className="font-medium">{tx.description}</p>
