@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   HandCoins,
+  Wallet,
   Landmark,
   User,
   LogOut,
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/owed", label: "Owed to Me", icon: HandCoins },
+  { href: "/debts", label: "I Owe", icon: Wallet },
   { href: "/accounts", label: "Accounts", icon: Landmark },
 ];
 

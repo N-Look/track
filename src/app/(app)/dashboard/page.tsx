@@ -12,7 +12,7 @@ const currencySymbols: Record<string, string> = {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ data: accounts }, { data: splits }, { data: recentTx }, { data: offsets }] =
+  const [{ data: accounts }, { data: splits }, { data: recentTx }, { data: offsets }, { data: debts }] =
     await Promise.all([
       supabase.from("accounts").select("*").order("name"),
       supabase
@@ -25,6 +25,10 @@ export default async function DashboardPage() {
         .order("transaction_date", { ascending: false })
         .limit(5),
       supabase.from("offsets").select("amount, currency"),
+      supabase
+        .from("debts")
+        .select("amount, currency")
+        .eq("is_paid", false),
     ]);
 
   // Group accounts by currency
@@ -47,6 +51,12 @@ export default async function DashboardPage() {
   });
   (offsets ?? []).forEach((o) => {
     owedByCurrency[o.currency] = (owedByCurrency[o.currency] ?? 0) - o.amount;
+  });
+
+  // Calculate totals user owes per currency
+  const youOweByCurrency: Record<string, number> = {};
+  (debts ?? []).forEach((d) => {
+    youOweByCurrency[d.currency] = (youOweByCurrency[d.currency] ?? 0) + d.amount;
   });
 
   // Calculate total balances per currency (exclude credit cards)
@@ -90,6 +100,24 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {currencySymbols[currency] ?? "$"}
+                {total.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {Object.entries(youOweByCurrency).map(([currency, total]) => (
+          <Card key={`youowe-${currency}`}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                You Owe ({currency})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                 {currencySymbols[currency] ?? "$"}
                 {total.toLocaleString("en-US", {
                   minimumFractionDigits: 2,

@@ -44,6 +44,42 @@ export type Database = {
         }
         Relationships: []
       }
+      debts: {
+        Row: {
+          amount: number
+          created_at: string | null
+          creditor_name: string
+          currency: Database["public"]["Enums"]["currency_type"]
+          description: string | null
+          id: string
+          is_paid: boolean | null
+          paid_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          creditor_name: string
+          currency?: Database["public"]["Enums"]["currency_type"]
+          description?: string | null
+          id?: string
+          is_paid?: boolean | null
+          paid_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          creditor_name?: string
+          currency?: Database["public"]["Enums"]["currency_type"]
+          description?: string | null
+          id?: string
+          is_paid?: boolean | null
+          paid_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       offsets: {
         Row: {
           amount: number
@@ -275,3 +311,29 @@ export type Enums<
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      account_category: ["bank", "credit_card", "third_party"],
+      currency_type: ["CAD", "TTD", "USD"],
+    },
+  },
+} as const

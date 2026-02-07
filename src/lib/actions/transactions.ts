@@ -63,7 +63,7 @@ export async function createTransaction(formData: FormData) {
     if (splitError) throw new Error(splitError.message);
   }
 
-  // Deduct from account balance (skip credit cards)
+  // Update account balance
   if (account_id) {
     const { data: account } = await supabase
       .from("accounts")
@@ -71,8 +71,13 @@ export async function createTransaction(formData: FormData) {
       .eq("id", account_id)
       .single();
 
-    if (account && account.category !== "credit_card") {
-      const newBalance = (account.current_balance ?? 0) - amount;
+    if (account) {
+      // Credit cards: add to balance (tracks total spent)
+      // Other accounts: subtract from balance
+      const newBalance =
+        account.category === "credit_card"
+          ? (account.current_balance ?? 0) + amount
+          : (account.current_balance ?? 0) - amount;
       await supabase
         .from("accounts")
         .update({
@@ -107,7 +112,7 @@ export async function deleteTransaction(id: string) {
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  // Reverse balance change (skip credit cards)
+  // Reverse balance change
   if (transaction.account_id) {
     const { data: account } = await supabase
       .from("accounts")
@@ -115,8 +120,13 @@ export async function deleteTransaction(id: string) {
       .eq("id", transaction.account_id)
       .single();
 
-    if (account && account.category !== "credit_card") {
-      const newBalance = (account.current_balance ?? 0) + transaction.amount;
+    if (account) {
+      // Credit cards: subtract from total spent
+      // Other accounts: add back to balance
+      const newBalance =
+        account.category === "credit_card"
+          ? (account.current_balance ?? 0) - transaction.amount
+          : (account.current_balance ?? 0) + transaction.amount;
       await supabase
         .from("accounts")
         .update({
