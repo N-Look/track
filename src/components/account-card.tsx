@@ -25,14 +25,20 @@ export function AccountCard({ account }: { account: Tables<"accounts"> }) {
         <Badge variant="secondary">{categoryLabels[account.category]}</Badge>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">
-          {symbol}
-          {balance.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
-        </div>
-        <p className="text-xs text-muted-foreground">{account.currency}</p>
+        {account.category === "credit_card" ? (
+          <div className="text-sm text-muted-foreground">Spending tracker</div>
+        ) : (
+          <>
+            <div className="text-2xl font-bold">
+              {symbol}
+              {balance.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">{account.currency}</p>
+          </>
+        )}
       </CardContent>
     </Card>
   );

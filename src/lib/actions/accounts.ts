@@ -47,6 +47,22 @@ export async function updateAccount(id: string, formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+export async function updateAccountBalance(id: string, newBalance: number) {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("accounts")
+    .update({
+      current_balance: newBalance,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/accounts");
+  revalidatePath("/dashboard");
+}
+
 export async function deleteAccount(id: string) {
   const supabase = await createClient();
 

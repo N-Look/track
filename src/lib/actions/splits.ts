@@ -23,17 +23,17 @@ export async function markSplitAsPaid(splitId: string) {
 
   if (error) throw new Error(error.message);
 
-  // Add amount back to account balance
+  // Add amount back to account balance (skip credit cards)
   const accountId = (split.transactions as { account_id: string | null })
     ?.account_id;
   if (accountId) {
     const { data: account } = await supabase
       .from("accounts")
-      .select("current_balance")
+      .select("current_balance, category")
       .eq("id", accountId)
       .single();
 
-    if (account) {
+    if (account && account.category !== "credit_card") {
       const newBalance = (account.current_balance ?? 0) + split.amount_owed;
       await supabase
         .from("accounts")

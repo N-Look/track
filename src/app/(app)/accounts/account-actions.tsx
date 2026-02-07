@@ -6,6 +6,7 @@ import {
   createAccount,
   updateAccount,
   deleteAccount,
+  updateAccountBalance,
 } from "@/lib/actions/accounts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,16 +31,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Plus, MoreVertical, Pencil, Trash2, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 
 export function AccountActions({ account }: { account?: Tables<"accounts"> }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [balanceOpen, setBalanceOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState<string>(account?.category ?? "bank");
   const [currency, setCurrency] = useState<string>(account?.currency ?? "CAD");
+  const [newBalance, setNewBalance] = useState<string>("");
 
   const isEdit = !!account;
 
@@ -78,6 +81,22 @@ export function AccountActions({ account }: { account?: Tables<"accounts"> }) {
     }
   }
 
+  async function handleSetBalance(e: React.FormEvent) {
+    e.preventDefault();
+    if (!account) return;
+    setLoading(true);
+    try {
+      await updateAccountBalance(account.id, parseFloat(newBalance));
+      toast.success("Balance updated");
+      setBalanceOpen(false);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update balance");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // For existing accounts, show edit/delete dropdown
   if (isEdit) {
     return (
@@ -93,6 +112,17 @@ export function AccountActions({ account }: { account?: Tables<"accounts"> }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
+            {account.category !== "credit_card" && (
+              <DropdownMenuItem
+                onClick={() => {
+                  setNewBalance(String(account.current_balance ?? 0));
+                  setBalanceOpen(true);
+                }}
+              >
+                <DollarSign className="mr-2 h-4 w-4" />
+                Set Balance
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => setOpen(true)}>
               <Pencil className="mr-2 h-4 w-4" />
               Edit
@@ -119,6 +149,30 @@ export function AccountActions({ account }: { account?: Tables<"accounts"> }) {
               onSubmit={handleSubmit}
               submitLabel="Save"
             />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={balanceOpen} onOpenChange={setBalanceOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Set Balance — {account.name}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSetBalance} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-balance">New Balance ({account.currency})</Label>
+                <Input
+                  id="new-balance"
+                  type="number"
+                  step="0.01"
+                  value={newBalance}
+                  onChange={(e) => setNewBalance(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Saving..." : "Set Balance"}
+              </Button>
+            </form>
           </DialogContent>
         </Dialog>
       </>

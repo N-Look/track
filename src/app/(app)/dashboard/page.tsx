@@ -12,7 +12,7 @@ const currencySymbols: Record<string, string> = {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ data: accounts }, { data: splits }, { data: recentTx }] =
+  const [{ data: accounts }, { data: splits }, { data: recentTx }, { data: offsets }] =
     await Promise.all([
       supabase.from("accounts").select("*").order("name"),
       supabase
@@ -24,6 +24,7 @@ export default async function DashboardPage() {
         .select("*")
         .order("transaction_date", { ascending: false })
         .limit(5),
+      supabase.from("offsets").select("amount, currency"),
     ]);
 
   // Group accounts by currency
@@ -37,17 +38,21 @@ export default async function DashboardPage() {
     {} as Record<string, typeof accounts>
   );
 
-  // Calculate totals owed per currency
+  // Calculate totals owed per currency (net of offsets)
   const owedByCurrency: Record<string, number> = {};
   (splits ?? []).forEach((s) => {
     const currency =
       (s.transactions as { currency: string } | null)?.currency ?? "CAD";
     owedByCurrency[currency] = (owedByCurrency[currency] ?? 0) + s.amount_owed;
   });
+  (offsets ?? []).forEach((o) => {
+    owedByCurrency[o.currency] = (owedByCurrency[o.currency] ?? 0) - o.amount;
+  });
 
-  // Calculate total balances per currency
+  // Calculate total balances per currency (exclude credit cards)
   const totalsByCurrency: Record<string, number> = {};
   (accounts ?? []).forEach((a) => {
+    if (a.category === "credit_card") return;
     totalsByCurrency[a.currency] =
       (totalsByCurrency[a.currency] ?? 0) + (a.current_balance ?? 0);
   });
