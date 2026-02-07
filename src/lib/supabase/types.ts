@@ -115,6 +115,116 @@ export type Database = {
           },
         ]
       }
+      import_batches: {
+        Row: {
+          id: string
+          user_id: string
+          account_id: string
+          filename: string
+          total_transactions: number
+          confirmed_count: number
+          rejected_count: number
+          status: "pending" | "completed"
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          account_id: string
+          filename: string
+          total_transactions?: number
+          confirmed_count?: number
+          rejected_count?: number
+          status?: "pending" | "completed"
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          account_id?: string
+          filename?: string
+          total_transactions?: number
+          confirmed_count?: number
+          rejected_count?: number
+          status?: "pending" | "completed"
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_batches_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      imported_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          account_id: string
+          import_batch_id: string
+          amount: number
+          currency: Database["public"]["Enums"]["currency_type"]
+          description: string
+          transaction_date: string
+          original_text: string | null
+          confidence_score: number
+          ai_provider: string
+          status: "pending" | "confirmed" | "rejected"
+          reviewed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          account_id: string
+          import_batch_id: string
+          amount: number
+          currency: Database["public"]["Enums"]["currency_type"]
+          description: string
+          transaction_date: string
+          original_text?: string | null
+          confidence_score?: number
+          ai_provider?: string
+          status?: "pending" | "confirmed" | "rejected"
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          account_id?: string
+          import_batch_id?: string
+          amount?: number
+          currency?: Database["public"]["Enums"]["currency_type"]
+          description?: string
+          transaction_date?: string
+          original_text?: string | null
+          confidence_score?: number
+          ai_provider?: string
+          status?: "pending" | "confirmed" | "rejected"
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imported_transactions_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "imported_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string | null

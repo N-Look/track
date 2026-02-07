@@ -17,6 +17,7 @@ import {
   ArrowLeftRight,
   Users,
   Landmark,
+  FileUp,
   User,
   LogOut,
   Menu,
@@ -30,6 +31,7 @@ const navItems = [
   { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
   { href: "/balances", label: "Balances", icon: Users },
   { href: "/accounts", label: "Accounts", icon: Landmark },
+  { href: "/imports", label: "Imports", icon: FileUp },
 ];
 
 export function Nav({ userEmail }: { userEmail: string }) {
