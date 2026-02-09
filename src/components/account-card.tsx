@@ -1,5 +1,16 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useState } from "react";
+import { convert, CURRENCIES, currencySymbols } from "@/lib/currency";
 import type { Tables } from "@/lib/supabase/types";
 
 const categoryLabels: Record<string, string> = {
@@ -8,15 +19,16 @@ const categoryLabels: Record<string, string> = {
   third_party: "Third Party",
 };
 
-const currencySymbols: Record<string, string> = {
-  CAD: "CA$",
-  TTD: "TT$",
-  USD: "US$",
-};
-
 export function AccountCard({ account }: { account: Tables<"accounts"> }) {
+  const [viewCurrency, setViewCurrency] = useState<string>(account.currency);
   const symbol = currencySymbols[account.currency] ?? "$";
   const balance = account.current_balance ?? 0;
+
+  const showConverted = viewCurrency !== account.currency;
+  const convertedBalance = showConverted
+    ? convert(balance, account.currency, viewCurrency)
+    : balance;
+  const convertedSymbol = currencySymbols[viewCurrency] ?? "$";
 
   return (
     <Card>
@@ -32,9 +44,32 @@ export function AccountCard({ account }: { account: Tables<"accounts"> }) {
             maximumFractionDigits: 2,
           })}
         </div>
-        <p className="text-xs text-muted-foreground">
-          {account.category === "credit_card" ? "Total Spent" : account.currency}
-        </p>
+        {showConverted && (
+          <p className="text-sm text-muted-foreground mt-0.5">
+            ≈ {convertedSymbol}
+            {convertedBalance.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </p>
+        )}
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-muted-foreground">
+            {account.category === "credit_card" ? "Total Spent" : account.currency}
+          </p>
+          <Select value={viewCurrency} onValueChange={setViewCurrency}>
+            <SelectTrigger className="h-7 w-[85px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CURRENCIES.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c === account.currency ? `${c}` : `→ ${c}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardContent>
     </Card>
   );

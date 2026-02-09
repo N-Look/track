@@ -229,6 +229,7 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          category: Database["public"]["Enums"]["transaction_category"]
           created_at: string | null
           currency: Database["public"]["Enums"]["currency_type"]
           description: string
@@ -242,6 +243,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount: number
+          category?: Database["public"]["Enums"]["transaction_category"]
           created_at?: string | null
           currency: Database["public"]["Enums"]["currency_type"]
           description: string
@@ -255,6 +257,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          category?: Database["public"]["Enums"]["transaction_category"]
           created_at?: string | null
           currency?: Database["public"]["Enums"]["currency_type"]
           description?: string
@@ -285,6 +288,7 @@ export type Database = {
     Enums: {
       account_category: "bank" | "credit_card" | "third_party"
       currency_type: "CAD" | "TTD" | "USD"
+      transaction_category: "food" | "groceries" | "transportation" | "entertainment" | "utilities" | "shopping" | "health" | "education" | "transfer" | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -414,6 +418,7 @@ export const Constants = {
     Enums: {
       account_category: ["bank", "credit_card", "third_party"],
       currency_type: ["CAD", "TTD", "USD"],
+      transaction_category: ["food", "groceries", "transportation", "entertainment", "utilities", "shopping", "health", "education", "transfer", "other"],
     },
   },
 } as const

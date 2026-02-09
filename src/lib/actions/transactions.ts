@@ -28,6 +28,7 @@ export async function createTransaction(formData: FormData) {
   const fee_lost = formData.get("fee_lost")
     ? parseFloat(formData.get("fee_lost") as string)
     : 0;
+  const category = (formData.get("category") as string) || "other";
   const splitsJson = formData.get("splits") as string | null;
   const splits: SplitInput[] = splitsJson ? JSON.parse(splitsJson) : [];
 
@@ -40,6 +41,7 @@ export async function createTransaction(formData: FormData) {
       description,
       amount,
       currency,
+      category: category as Database["public"]["Enums"]["transaction_category"],
       transaction_date: transaction_date || undefined,
       is_repayment,
       is_transfer_to_third_party: is_transfer,

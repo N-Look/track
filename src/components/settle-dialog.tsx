@@ -1,0 +1,219 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { settleUp } from "@/lib/actions/settlements";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Handshake, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import type { Database } from "@/lib/supabase/types";
+
+type CurrencyType = Database["public"]["Enums"]["currency_type"];
+
+const currencySymbols: Record<string, string> = {
+  CAD: "CA$",
+  TTD: "TT$",
+  USD: "US$",
+};
+
+interface Account {
+  id: string;
+  name: string;
+  currency: CurrencyType;
+  category: string;
+}
+
+export function SettleDialog({
+  personName,
+  netByCurrency,
+  accounts,
+}: {
+  personName: string;
+  netByCurrency: Record<string, number>;
+  accounts: Account[];
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [selectedCurrency, setSelectedCurrency] = useState(
+    Object.keys(netByCurrency)[0] ?? "CAD"
+  );
+  const [accountId, setAccountId] = useState("");
+  const [amount, setAmount] = useState("");
+
+  const netAmount = netByCurrency[selectedCurrency] ?? 0;
+  const direction = netAmount > 0 ? "they_pay" : "you_pay";
+  const absAmount = Math.abs(netAmount);
+
+  // Filter accounts to matching currency
+  const matchingAccounts = accounts.filter(
+    (a) => a.currency === selectedCurrency
+  );
+
+  function handleOpen(isOpen: boolean) {
+    setOpen(isOpen);
+    if (isOpen) {
+      const curr = Object.keys(netByCurrency)[0] ?? "CAD";
+      setSelectedCurrency(curr);
+      setAmount(Math.abs(netByCurrency[curr] ?? 0).toFixed(2));
+      setAccountId("");
+    }
+  }
+
+  async function handleSettle() {
+    if (!accountId || !amount) return;
+    setLoading(true);
+    try {
+      await settleUp(
+        personName,
+        accountId,
+        selectedCurrency as CurrencyType,
+        parseFloat(amount),
+        direction as "they_pay" | "you_pay"
+      );
+      toast.success(`Settled with ${personName}`);
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Settlement failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5">
+          <Handshake className="h-3.5 w-3.5" />
+          Settle
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Settle with {personName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Net balances summary */}
+          <div className="glass-light rounded-xl p-3 space-y-1">
+            {Object.entries(netByCurrency).map(([currency, net]) => (
+              <div key={currency} className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{currency}</span>
+                <span
+                  className={`font-medium ${
+                    net > 0
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-orange-600 dark:text-orange-400"
+                  }`}
+                >
+                  {net > 0 ? "+" : "\u2212"}
+                  {currencySymbols[currency] ?? "$"}
+                  {Math.abs(net).toFixed(2)}
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    {net > 0 ? "owes you" : "you owe"}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {Object.keys(netByCurrency).length > 1 && (
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select
+                value={selectedCurrency}
+                onValueChange={(v) => {
+                  setSelectedCurrency(v);
+                  setAmount(Math.abs(netByCurrency[v] ?? 0).toFixed(2));
+                  setAccountId("");
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(netByCurrency).map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Amount</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              max={absAmount}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+            {parseFloat(amount) < absAmount && (
+              <p className="text-xs text-muted-foreground">
+                Partial settlement ({currencySymbols[selectedCurrency]}
+                {(absAmount - parseFloat(amount || "0")).toFixed(2)} remaining)
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>
+              {direction === "they_pay"
+                ? "Receive into account"
+                : "Pay from account"}
+            </Label>
+            <Select value={accountId} onValueChange={setAccountId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {matchingAccounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            onClick={handleSettle}
+            className="w-full"
+            disabled={loading || !accountId || !amount}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Settling...
+              </>
+            ) : direction === "they_pay" ? (
+              `Receive ${currencySymbols[selectedCurrency]}${parseFloat(amount || "0").toFixed(2)}`
+            ) : (
+              `Pay ${currencySymbols[selectedCurrency]}${parseFloat(amount || "0").toFixed(2)}`
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -25,6 +25,19 @@ import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 
+const CATEGORIES = [
+  { value: "food", label: "Food" },
+  { value: "groceries", label: "Groceries" },
+  { value: "transportation", label: "Transportation" },
+  { value: "entertainment", label: "Entertainment" },
+  { value: "utilities", label: "Utilities" },
+  { value: "shopping", label: "Shopping" },
+  { value: "health", label: "Health" },
+  { value: "education", label: "Education" },
+  { value: "transfer", label: "Transfer" },
+  { value: "other", label: "Other" },
+] as const;
+
 interface SplitRow {
   debtor_name: string;
   amount_owed: string;
@@ -39,9 +52,13 @@ export function TransactionForm({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [accountId, setAccountId] = useState("");
+  const [category, setCategory] = useState("other");
   const [isRepayment, setIsRepayment] = useState(false);
   const [isTransfer, setIsTransfer] = useState(false);
   const [hasSplits, setHasSplits] = useState(false);
+  const [splitMode, setSplitMode] = useState<"manual" | "equal">("manual");
+  const [includeSelf, setIncludeSelf] = useState(true);
+  const [splitNames, setSplitNames] = useState<string[]>([""]);
   const [splits, setSplits] = useState<SplitRow[]>([]);
   const [amountSent, setAmountSent] = useState("");
   const [netReceived, setNetReceived] = useState("");
@@ -68,9 +85,13 @@ export function TransactionForm({
 
   function resetForm() {
     setAccountId("");
+    setCategory("other");
     setIsRepayment(false);
     setIsTransfer(false);
     setHasSplits(false);
+    setSplitMode("manual");
+    setIncludeSelf(true);
+    setSplitNames([""]);
     setSplits([]);
     setAmountSent("");
     setNetReceived("");
@@ -85,6 +106,7 @@ export function TransactionForm({
       const formData = new FormData(form);
 
       formData.set("account_id", accountId);
+      formData.set("category", category);
       formData.set("is_repayment", isRepayment.toString());
       formData.set("is_transfer_to_third_party", isTransfer.toString());
       formData.set("currency", selectedAccount?.currency ?? "CAD");
@@ -94,14 +116,29 @@ export function TransactionForm({
         formData.set("fee_lost", feeLost);
       }
 
-      if (hasSplits && splits.length > 0) {
-        const validSplits = splits
-          .filter((s) => s.debtor_name && s.amount_owed)
-          .map((s) => ({
-            debtor_name: s.debtor_name,
-            amount_owed: parseFloat(s.amount_owed),
-          }));
-        formData.set("splits", JSON.stringify(validSplits));
+      if (hasSplits) {
+        if (splitMode === "equal") {
+          const totalAmount = parseFloat(formData.get("amount") as string) || 0;
+          const validNames = splitNames.filter((n) => n.trim());
+          const splitCount = validNames.length + (includeSelf ? 1 : 0);
+          if (validNames.length > 0 && splitCount > 0 && totalAmount > 0) {
+            const perPerson = Math.floor((totalAmount / splitCount) * 100) / 100;
+            const remainder = Math.round((totalAmount - perPerson * splitCount) * 100) / 100;
+            const equalSplits = validNames.map((name, i) => ({
+              debtor_name: name.trim(),
+              amount_owed: i === 0 ? perPerson + remainder : perPerson,
+            }));
+            formData.set("splits", JSON.stringify(equalSplits));
+          }
+        } else if (splits.length > 0) {
+          const validSplits = splits
+            .filter((s) => s.debtor_name && s.amount_owed)
+            .map((s) => ({
+              debtor_name: s.debtor_name,
+              amount_owed: parseFloat(s.amount_owed),
+            }));
+          formData.set("splits", JSON.stringify(validSplits));
+        }
       }
 
       await createTransaction(formData);
@@ -160,6 +197,22 @@ export function TransactionForm({
               type="date"
               defaultValue={new Date().toISOString().split("T")[0]}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Mode toggles */}
@@ -246,38 +299,129 @@ export function TransactionForm({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>Splits</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addSplit}>
-                  <Plus className="mr-1 h-3 w-3" />
-                  Add Person
-                </Button>
-              </div>
-              {splits.map((split, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input
-                    placeholder="Name"
-                    value={split.debtor_name}
-                    onChange={(e) => updateSplit(i, "debtor_name", e.target.value)}
-                  />
-                  <Input
-                    placeholder="Amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={split.amount_owed}
-                    onChange={(e) =>
-                      updateSplit(i, "amount_owed", e.target.value)
-                    }
-                  />
+                <div className="flex gap-1">
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeSplit(i)}
+                    variant={splitMode === "equal" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSplitMode("equal")}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    Equal
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={splitMode === "manual" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSplitMode("manual")}
+                  >
+                    Manual
                   </Button>
                 </div>
-              ))}
+              </div>
+
+              {splitMode === "equal" ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="include-self">Include myself</Label>
+                    <Switch
+                      id="include-self"
+                      checked={includeSelf}
+                      onCheckedChange={setIncludeSelf}
+                    />
+                  </div>
+                  {splitNames.map((name, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Input
+                        placeholder={`Person ${i + 1}`}
+                        value={name}
+                        onChange={(e) => {
+                          const updated = [...splitNames];
+                          updated[i] = e.target.value;
+                          setSplitNames(updated);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSplitNames(splitNames.filter((_, j) => j !== i))}
+                        disabled={splitNames.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSplitNames([...splitNames, ""])}
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    Add Person
+                  </Button>
+                  {(() => {
+                    const formEl = typeof document !== "undefined"
+                      ? document.querySelector<HTMLInputElement>("[name=amount]")
+                      : null;
+                    const totalAmount = formEl ? parseFloat(formEl.value) || 0 : 0;
+                    const validNames = splitNames.filter((n) => n.trim());
+                    const splitCount = validNames.length + (includeSelf ? 1 : 0);
+                    if (totalAmount > 0 && splitCount > 0) {
+                      const perPerson = Math.floor((totalAmount / splitCount) * 100) / 100;
+                      const remainder = Math.round((totalAmount - perPerson * splitCount) * 100) / 100;
+                      return (
+                        <div className="glass-light rounded-lg p-2 text-sm space-y-1">
+                          <p>
+                            {splitCount} {splitCount === 1 ? "person" : "people"} ×{" "}
+                            <strong>${perPerson.toFixed(2)}</strong> each
+                          </p>
+                          {remainder > 0 && (
+                            <p className="text-muted-foreground">
+                              +${remainder.toFixed(2)} on first person
+                            </p>
+                          )}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" size="sm" onClick={addSplit}>
+                    <Plus className="mr-1 h-3 w-3" />
+                    Add Person
+                  </Button>
+                  {splits.map((split, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Input
+                        placeholder="Name"
+                        value={split.debtor_name}
+                        onChange={(e) => updateSplit(i, "debtor_name", e.target.value)}
+                      />
+                      <Input
+                        placeholder="Amount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={split.amount_owed}
+                        onChange={(e) =>
+                          updateSplit(i, "amount_owed", e.target.value)
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeSplit(i)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
 

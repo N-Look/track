@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { AccountCard } from "@/components/account-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { convert, currencySymbols as cSymbols } from "@/lib/currency";
 
 const currencySymbols: Record<string, string> = {
   CAD: "CA$",
@@ -12,7 +14,11 @@ const currencySymbols: Record<string, string> = {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ data: accounts }, { data: splits }, { data: recentTx }, { data: debts }] =
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  const monthStartStr = monthStart.toISOString().split("T")[0];
+
+  const [{ data: accounts }, { data: splits }, { data: recentTx }, { data: debts }, { data: monthlyTx }, { data: allMonthlyTx }] =
     await Promise.all([
       supabase.from("accounts").select("*").order("name"),
       supabase
@@ -28,6 +34,15 @@ export default async function DashboardPage() {
         .from("debts")
         .select("amount, currency, creditor_name")
         .eq("is_paid", false),
+      supabase
+        .from("transactions")
+        .select("amount, currency, category")
+        .gte("transaction_date", monthStartStr)
+        .eq("is_repayment", false),
+      supabase
+        .from("transactions")
+        .select("amount, currency, description, transaction_date, account_id")
+        .gte("transaction_date", monthStartStr),
     ]);
 
   // Group accounts by currency
@@ -68,6 +83,44 @@ export default async function DashboardPage() {
     if (a.category === "credit_card") return;
     totalsByCurrency[a.currency] =
       (totalsByCurrency[a.currency] ?? 0) + (a.current_balance ?? 0);
+  });
+
+  // Category breakdown for current month
+  const categoryTotals: Record<string, Record<string, number>> = {};
+  (monthlyTx ?? []).forEach((tx) => {
+    const cat = tx.category ?? "other";
+    if (!categoryTotals[cat]) categoryTotals[cat] = {};
+    categoryTotals[cat][tx.currency] =
+      (categoryTotals[cat][tx.currency] ?? 0) + tx.amount;
+  });
+
+  const categoryLabels: Record<string, string> = {
+    food: "Food", groceries: "Groceries", transportation: "Transport",
+    entertainment: "Entertainment", utilities: "Utilities", shopping: "Shopping",
+    health: "Health", education: "Education", transfer: "Transfer", other: "Other",
+  };
+
+  const sortedCategories = Object.entries(categoryTotals)
+    .map(([cat, byCurrency]) => ({
+      category: cat,
+      label: categoryLabels[cat] ?? cat,
+      byCurrency,
+      total: Object.values(byCurrency).reduce((a, b) => a + b, 0),
+    }))
+    .sort((a, b) => b.total - a.total);
+
+  // Credit card summary
+  const creditCardAccounts = (accounts ?? []).filter(
+    (a) => a.category === "credit_card"
+  );
+  const ccAccountIds = new Set(creditCardAccounts.map((a) => a.id));
+  const ccMonthlyTx = (allMonthlyTx ?? []).filter(
+    (tx) => tx.account_id && ccAccountIds.has(tx.account_id)
+  );
+  const ccTotalByCurrency: Record<string, number> = {};
+  ccMonthlyTx.forEach((tx) => {
+    ccTotalByCurrency[tx.currency] =
+      (ccTotalByCurrency[tx.currency] ?? 0) + tx.amount;
   });
 
   return (
@@ -151,6 +204,33 @@ export default async function DashboardPage() {
         })}
       </div>
 
+      {/* Credit Card Summary */}
+      {creditCardAccounts.length > 0 && Object.keys(ccTotalByCurrency).length > 0 && (
+        <div className="glass rounded-xl p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            Credit Card This Month
+          </h3>
+          <div className="flex flex-wrap gap-6">
+            {Object.entries(ccTotalByCurrency).map(([curr, total]) => (
+              <div key={curr}>
+                <div className="text-2xl font-bold">
+                  {cSymbols[curr] ?? "$"}
+                  {total.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </div>
+                {curr !== "CAD" && (
+                  <p className="text-sm text-muted-foreground">
+                    ≈ CA${convert(total, curr, "CAD").toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Accounts by currency */}
       {Object.entries(grouped).map(([currency, accts]) => (
         <div key={currency}>
@@ -167,6 +247,40 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground">
           No accounts yet. Go to Accounts to add one.
         </p>
+      )}
+
+      {/* Category breakdown */}
+      {sortedCategories.length > 0 && (
+        <div>
+          <h2 className="mb-4 text-xl font-semibold">This Month by Category</h2>
+          <div className="glass rounded-xl p-4 space-y-3">
+            {sortedCategories.map(({ category, label, byCurrency, total }) => {
+              const maxTotal = sortedCategories[0]?.total ?? 1;
+              const pct = Math.round((total / maxTotal) * 100);
+              return (
+                <div key={category} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{label}</span>
+                    <div className="flex gap-2">
+                      {Object.entries(byCurrency).map(([curr, amt]) => (
+                        <span key={curr} className="text-muted-foreground tabular-nums">
+                          {currencySymbols[curr] ?? "$"}
+                          {amt.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full bg-[var(--glass-bg-light)]">
+                    <div
+                      className="h-2 rounded-full bg-primary transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <Separator />

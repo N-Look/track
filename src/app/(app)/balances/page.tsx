@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SplitTable } from "@/components/split-table";
 import { DebtForm } from "@/components/debt-form";
 import { DebtTable } from "@/components/debt-table";
+import { SettleDialog } from "@/components/settle-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const currencySymbols: Record<string, string> = {
@@ -148,6 +149,20 @@ export default async function BalancesPage() {
                   ))}
                 </div>
               </div>
+              {totalNet !== 0 && (
+                <div className="shrink-0">
+                  <SettleDialog
+                    personName={name}
+                    netByCurrency={netByCurrency}
+                    accounts={(accounts ?? []).map((a) => ({
+                      id: a.id,
+                      name: a.name,
+                      currency: a.currency,
+                      category: a.category,
+                    }))}
+                  />
+                </div>
+              )}
             </div>
             );
           })}

@@ -30,6 +30,7 @@ interface TransactionWithRelations {
   description: string;
   amount: number;
   currency: string;
+  category: string;
   transaction_date: string | null;
   is_repayment: boolean | null;
   is_transfer_to_third_party: boolean | null;
@@ -45,6 +46,24 @@ const currencySymbols: Record<string, string> = {
   USD: "US$",
 };
 
+const CATEGORIES = [
+  "food", "groceries", "transportation", "entertainment", "utilities",
+  "shopping", "health", "education", "transfer", "other",
+] as const;
+
+const categoryLabels: Record<string, string> = {
+  food: "Food",
+  groceries: "Groceries",
+  transportation: "Transport",
+  entertainment: "Entertainment",
+  utilities: "Utilities",
+  shopping: "Shopping",
+  health: "Health",
+  education: "Education",
+  transfer: "Transfer",
+  other: "Other",
+};
+
 export function TransactionList({
   transactions,
   accounts,
@@ -55,6 +74,7 @@ export function TransactionList({
   const router = useRouter();
   const [filterAccount, setFilterAccount] = useState("all");
   const [filterCurrency, setFilterCurrency] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -62,6 +82,7 @@ export function TransactionList({
   const filtered = transactions.filter((tx) => {
     if (filterAccount !== "all" && tx.account_id !== filterAccount) return false;
     if (filterCurrency !== "all" && tx.currency !== filterCurrency) return false;
+    if (filterCategory !== "all" && tx.category !== filterCategory) return false;
     if (dateFrom && tx.transaction_date && tx.transaction_date < dateFrom)
       return false;
     if (dateTo && tx.transaction_date && tx.transaction_date > dateTo)
@@ -108,6 +129,19 @@ export function TransactionList({
             <SelectItem value="CAD">CAD</SelectItem>
             <SelectItem value="TTD">TTD</SelectItem>
             <SelectItem value="USD">USD</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="sm:w-[150px]">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {CATEGORIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {categoryLabels[c]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Input
@@ -163,6 +197,9 @@ export function TransactionList({
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
+                          <Badge variant="secondary">
+                            {categoryLabels[tx.category] ?? tx.category}
+                          </Badge>
                           {tx.is_repayment && (
                             <Badge variant="secondary">Repayment</Badge>
                           )}
@@ -223,6 +260,9 @@ export function TransactionList({
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex flex-wrap gap-1">
+                      <Badge variant="secondary">
+                        {categoryLabels[tx.category] ?? tx.category}
+                      </Badge>
                       {tx.is_repayment && (
                         <Badge variant="secondary">Repayment</Badge>
                       )}
