@@ -21,9 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
+import { TransactionEditDialog } from "@/components/transaction-edit-dialog";
 
 interface TransactionWithRelations {
   id: string;
@@ -78,6 +79,7 @@ export function TransactionList({
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingTx, setEditingTx] = useState<TransactionWithRelations | null>(null);
 
   const filtered = transactions.filter((tx) => {
     if (filterAccount !== "all" && tx.account_id !== filterAccount) return false;
@@ -216,14 +218,23 @@ export function TransactionList({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={deletingId === tx.id}
-                          onClick={() => handleDelete(tx.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingTx(tx)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={deletingId === tx.id}
+                            onClick={() => handleDelete(tx.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -277,21 +288,41 @@ export function TransactionList({
                         </Badge>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      disabled={deletingId === tx.id}
-                      onClick={() => handleDelete(tx.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => setEditingTx(tx)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        disabled={deletingId === tx.id}
+                        onClick={() => handleDelete(tx.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
         </>
+      )}
+
+      {editingTx && (
+        <TransactionEditDialog
+          transaction={editingTx}
+          open={editingTx !== null}
+          onOpenChange={(open) => {
+            if (!open) setEditingTx(null);
+          }}
+        />
       )}
     </div>
   );

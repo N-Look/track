@@ -214,7 +214,7 @@ export default async function BalancesPage() {
                   <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
                     You Owe Them
                   </h3>
-                  <DebtTable debts={debtsByPerson[name]} />
+                  <DebtTable debts={debtsByPerson[name]} accounts={accounts ?? []} />
                 </div>
               )}
               <DebtForm

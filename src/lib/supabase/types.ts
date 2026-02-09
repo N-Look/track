@@ -53,6 +53,7 @@ export type Database = {
           description: string | null
           id: string
           is_paid: boolean | null
+          linked_transaction_id: string | null
           paid_at: string | null
           user_id: string
         }
@@ -64,6 +65,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_paid?: boolean | null
+          linked_transaction_id?: string | null
           paid_at?: string | null
           user_id: string
         }
@@ -75,10 +77,19 @@ export type Database = {
           description?: string | null
           id?: string
           is_paid?: boolean | null
+          linked_transaction_id?: string | null
           paid_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "debts_linked_transaction_id_fkey"
+            columns: ["linked_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       splits: {
         Row: {

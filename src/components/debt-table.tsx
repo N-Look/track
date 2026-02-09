@@ -11,11 +11,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Check, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import type { Tables } from "@/lib/supabase/types";
+
+interface Account {
+  id: string;
+  name: string;
+  currency: string;
+  category: string;
+}
 
 const currencySymbols: Record<string, string> = {
   CAD: "CA$",
@@ -23,14 +44,32 @@ const currencySymbols: Record<string, string> = {
   USD: "US$",
 };
 
-export function DebtTable({ debts }: { debts: Tables<"debts">[] }) {
+export function DebtTable({
+  debts,
+  accounts,
+}: {
+  debts: Tables<"debts">[];
+  accounts: Account[];
+}) {
   const router = useRouter();
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [dialogDebt, setDialogDebt] = useState<Tables<"debts"> | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("none");
 
-  async function handleMarkPaid(debtId: string) {
+  function openDialog(debt: Tables<"debts">) {
+    setDialogDebt(debt);
+    setSelectedAccountId("none");
+  }
+
+  async function handleConfirmPaid() {
+    if (!dialogDebt) return;
+    const debtId = dialogDebt.id;
     setLoadingId(debtId);
+    setDialogDebt(null);
     try {
-      await markDebtAsPaid(debtId);
+      const accountId =
+        selectedAccountId === "none" ? null : selectedAccountId;
+      await markDebtAsPaid(debtId, accountId);
       toast.success("Marked as paid");
       router.refresh();
     } catch (err) {
@@ -62,6 +101,11 @@ export function DebtTable({ debts }: { debts: Tables<"debts">[] }) {
       </p>
     );
   }
+
+  const debtCurrency = dialogDebt?.currency ?? "CAD";
+  const matchingAccounts = accounts.filter(
+    (a) => a.currency === debtCurrency
+  );
 
   return (
     <>
@@ -111,7 +155,7 @@ export function DebtTable({ debts }: { debts: Tables<"debts">[] }) {
                           variant="outline"
                           size="sm"
                           disabled={loadingId === debt.id}
-                          onClick={() => handleMarkPaid(debt.id)}
+                          onClick={() => openDialog(debt)}
                         >
                           <Check className="mr-1 h-3 w-3" />
                           {loadingId === debt.id ? "..." : "Mark Paid"}
@@ -174,7 +218,7 @@ export function DebtTable({ debts }: { debts: Tables<"debts">[] }) {
                       variant="outline"
                       size="sm"
                       disabled={loadingId === debt.id}
-                      onClick={() => handleMarkPaid(debt.id)}
+                      onClick={() => openDialog(debt)}
                     >
                       <Check className="mr-1 h-3 w-3" />
                       {loadingId === debt.id ? "..." : "Mark Paid"}
@@ -194,6 +238,58 @@ export function DebtTable({ debts }: { debts: Tables<"debts">[] }) {
           );
         })}
       </div>
+
+      <Dialog
+        open={dialogDebt !== null}
+        onOpenChange={(open) => {
+          if (!open) setDialogDebt(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>How did you pay?</DialogTitle>
+          </DialogHeader>
+          {dialogDebt && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                You owe {dialogDebt.creditor_name}{" "}
+                {currencySymbols[debtCurrency] ?? "$"}
+                {dialogDebt.amount.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                })}
+                {" "}for &ldquo;{dialogDebt.description ?? "—"}&rdquo;
+              </p>
+              <div className="space-y-2">
+                <Label>Pay from account</Label>
+                <Select
+                  value={selectedAccountId}
+                  onValueChange={setSelectedAccountId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      No account (cash, etc.)
+                    </SelectItem>
+                    {matchingAccounts.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full"
+                onClick={handleConfirmPaid}
+              >
+                Confirm Paid
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

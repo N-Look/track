@@ -95,6 +95,77 @@ export async function createTransaction(formData: FormData) {
   revalidatePath("/balances");
 }
 
+export async function updateTransaction(formData: FormData) {
+  const supabase = await createClient();
+
+  const transactionId = formData.get("transactionId") as string;
+  const description = formData.get("description") as string;
+  const amount = parseFloat(formData.get("amount") as string);
+  const transaction_date = formData.get("transaction_date") as string;
+  const category = formData.get("category") as Database["public"]["Enums"]["transaction_category"];
+  const fee_lost = formData.get("fee_lost")
+    ? parseFloat(formData.get("fee_lost") as string)
+    : null;
+
+  // Fetch old transaction to calculate balance diff
+  const { data: oldTx } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", transactionId)
+    .single();
+
+  if (!oldTx) throw new Error("Transaction not found");
+
+  const diff = amount - oldTx.amount;
+
+  // Update the transaction
+  const updateData: Record<string, unknown> = {
+    description,
+    amount,
+    transaction_date: transaction_date || null,
+    category,
+  };
+  if (fee_lost !== null) {
+    updateData.fee_lost = fee_lost;
+  }
+  const { error } = await supabase
+    .from("transactions")
+    .update(updateData)
+    .eq("id", transactionId);
+
+  if (error) throw new Error(error.message);
+
+  // Adjust account balance by the diff
+  if (oldTx.account_id && diff !== 0) {
+    const { data: account } = await supabase
+      .from("accounts")
+      .select("current_balance, category")
+      .eq("id", oldTx.account_id)
+      .single();
+
+    if (account) {
+      // Credit cards: add diff (higher amount = more spent)
+      // Other accounts: subtract diff (higher amount = less balance)
+      const newBalance =
+        account.category === "credit_card"
+          ? (account.current_balance ?? 0) + diff
+          : (account.current_balance ?? 0) - diff;
+      await supabase
+        .from("accounts")
+        .update({
+          current_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", oldTx.account_id);
+    }
+  }
+
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  revalidatePath("/balances");
+  revalidatePath("/accounts");
+}
+
 export async function deleteTransaction(id: string) {
   const supabase = await createClient();
 

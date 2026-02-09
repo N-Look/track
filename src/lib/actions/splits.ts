@@ -8,10 +8,14 @@ export async function markSplitAsPaid(
   receivingAccountId: string | null
 ) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
 
   const { data: split } = await supabase
     .from("splits")
-    .select("*")
+    .select("*, transactions(description, currency)")
     .eq("id", splitId)
     .single();
 
@@ -24,6 +28,20 @@ export async function markSplitAsPaid(
     .eq("id", splitId);
 
   if (error) throw new Error(error.message);
+
+  const txDescription = (split.transactions as { description: string; currency: string } | null)?.description ?? "Unknown";
+  const txCurrency = (split.transactions as { description: string; currency: string } | null)?.currency ?? "CAD";
+
+  // Create transaction for audit trail
+  await supabase.from("transactions").insert({
+    user_id: user.id,
+    account_id: receivingAccountId,
+    description: `Split received: ${txDescription} from ${split.debtor_name}`,
+    amount: split.amount_owed,
+    currency: txCurrency as "CAD" | "TTD" | "USD",
+    category: "other" as const,
+    is_repayment: true,
+  });
 
   // Credit the receiving account
   if (receivingAccountId) {
@@ -52,4 +70,5 @@ export async function markSplitAsPaid(
   revalidatePath("/balances");
   revalidatePath("/dashboard");
   revalidatePath("/accounts");
+  revalidatePath("/transactions");
 }
