@@ -31,7 +31,7 @@ export function AccountCard({ account }: { account: Tables<"accounts"> }) {
   const convertedSymbol = currencySymbols[viewCurrency] ?? "$";
 
   return (
-    <Card>
+    <Card className="transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:border-primary/20 cursor-pointer group">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium">{account.name}</CardTitle>
         <Badge variant="secondary">{categoryLabels[account.category]}</Badge>

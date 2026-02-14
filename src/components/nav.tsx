@@ -80,7 +80,7 @@ export function Nav({ userEmail }: { userEmail: string }) {
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-3 md:py-2 text-sm font-medium transition-colors",
                   isActive
                     ? "glass-active text-primary"
                     : "text-muted-foreground hover:bg-[var(--glass-bg)] hover:text-foreground"

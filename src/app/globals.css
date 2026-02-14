@@ -82,13 +82,14 @@
   --sidebar-ring: oklch(0.708 0 0);
 
   /* Glass variables - Light */
-  --glass-bg: oklch(1 0 0 / 60%);
-  --glass-bg-heavy: oklch(1 0 0 / 80%);
-  --glass-bg-light: oklch(1 0 0 / 40%);
+  --glass-bg: linear-gradient(145deg, oklch(1 0 0 / 60%), oklch(1 0 0 / 40%));
+  --glass-bg-heavy: linear-gradient(145deg, oklch(1 0 0 / 85%), oklch(1 0 0 / 75%));
+  --glass-bg-light: linear-gradient(145deg, oklch(1 0 0 / 40%), oklch(1 0 0 / 20%));
   --glass-border: oklch(0 0 0 / 8%);
   --glass-border-subtle: oklch(0 0 0 / 6%);
-  --glass-shadow: 0 1px 3px oklch(0 0 0 / 6%), 0 1px 2px oklch(0 0 0 / 4%);
-  --glass-shadow-lg: 0 4px 16px oklch(0 0 0 / 8%), 0 1px 4px oklch(0 0 0 / 5%);
+  --glass-shadow: 0 4px 6px -1px oklch(0 0 0 / 5%), 0 2px 4px -1px oklch(0 0 0 / 3%);
+  --glass-shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 8%), 0 4px 6px -2px oklch(0 0 0 / 4%);
+  --glass-shadow-hover: 0 20px 25px -5px oklch(0 0 0 / 10%), 0 10px 10px -5px oklch(0 0 0 / 4%);
   --glow-green: 0 1px 3px oklch(0 0 0 / 6%), 0 0 0 1px oklch(0.55 0.15 145 / 25%);
   --glow-orange: 0 1px 3px oklch(0 0 0 / 6%), 0 0 0 1px oklch(0.6 0.15 55 / 30%);
 }
@@ -127,13 +128,14 @@
   --sidebar-ring: oklch(0.556 0 0);
 
   /* Glass variables - Dark */
-  --glass-bg: oklch(0.2 0 0 / 70%);
-  --glass-bg-heavy: oklch(0.17 0 0 / 92%);
-  --glass-bg-light: oklch(0.22 0 0 / 50%);
-  --glass-border: oklch(1 0 0 / 10%);
-  --glass-border-subtle: oklch(1 0 0 / 7%);
-  --glass-shadow: 0 1px 3px oklch(0 0 0 / 40%), 0 1px 2px oklch(0 0 0 / 30%);
-  --glass-shadow-lg: 0 4px 16px oklch(0 0 0 / 50%), 0 2px 6px oklch(0 0 0 / 30%);
+  --glass-bg: linear-gradient(145deg, oklch(0.2 0 0 / 70%), oklch(0.18 0 0 / 60%));
+  --glass-bg-heavy: linear-gradient(145deg, oklch(0.17 0 0 / 92%), oklch(0.15 0 0 / 92%));
+  --glass-bg-light: linear-gradient(145deg, oklch(0.22 0 0 / 50%), oklch(0.2 0 0 / 40%));
+  --glass-border: oklch(1 0 0 / 8%);
+  --glass-border-subtle: oklch(1 0 0 / 5%);
+  --glass-shadow: 0 4px 6px -1px oklch(0 0 0 / 20%), 0 2px 4px -1px oklch(0 0 0 / 10%);
+  --glass-shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 30%), 0 4px 6px -2px oklch(0 0 0 / 20%);
+  --glass-shadow-hover: 0 20px 25px -5px oklch(0 0 0 / 40%), 0 10px 10px -5px oklch(0 0 0 / 30%);
   --glow-green: 0 1px 3px oklch(0 0 0 / 40%), 0 0 0 1px oklch(0.55 0.15 145 / 35%);
   --glow-orange: 0 1px 3px oklch(0 0 0 / 40%), 0 0 0 1px oklch(0.6 0.15 55 / 40%);
 }
@@ -150,10 +152,31 @@
 @layer components {
   .glass {
     background: var(--glass-bg);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
     border: 1px solid var(--glass-border);
     box-shadow: var(--glass-shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass:hover {
+    border-color: var(--ring);
+    box-shadow: var(--glass-shadow-hover);
+  }
+
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--glass-shadow-hover);
+    border-color: var(--glass-border-subtle);
   }
 
   .glass-heavy {
