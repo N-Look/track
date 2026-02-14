@@ -25,6 +25,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 import { TransactionEditDialog } from "@/components/transaction-edit-dialog";
+import { formatAmount } from "@/lib/currency";
 
 interface TransactionWithRelations {
   id: string;
@@ -191,11 +192,8 @@ export function TransactionList({
                       </TableCell>
                       <TableCell>{tx.description}</TableCell>
                       <TableCell>{tx.accounts?.name ?? "—"}</TableCell>
-                      <TableCell className="whitespace-nowrap font-medium">
-                        {symbol}
-                        {tx.amount.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                        })}
+                      <TableCell className={`whitespace-nowrap font-medium ${tx.amount < 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {formatAmount(tx.amount, symbol)}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -261,11 +259,8 @@ export function TransactionList({
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="font-semibold">
-                        {symbol}
-                        {tx.amount.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                        })}
+                      <p className={`font-semibold ${tx.amount < 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {formatAmount(tx.amount, symbol)}
                       </p>
                     </div>
                   </div>

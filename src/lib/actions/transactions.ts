@@ -181,6 +181,12 @@ export async function deleteTransaction(id: string) {
   // Delete splits first (FK constraint)
   await supabase.from("splits").delete().eq("transaction_id", id);
 
+  // Unlink any debts referencing this transaction (FK constraint)
+  await supabase
+    .from("debts")
+    .update({ linked_transaction_id: null })
+    .eq("linked_transaction_id", id);
+
   // Delete the transaction
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw new Error(error.message);

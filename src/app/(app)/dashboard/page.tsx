@@ -3,7 +3,7 @@ import { AccountCard } from "@/components/account-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { convert, currencySymbols as cSymbols } from "@/lib/currency";
+import { convert, currencySymbols as cSymbols, formatAmount } from "@/lib/currency";
 
 const currencySymbols: Record<string, string> = {
   CAD: "CA$",
@@ -304,11 +304,8 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold">
-                    {currencySymbols[tx.currency] ?? "$"}
-                    {tx.amount.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                    })}
+                  <p className={`font-semibold ${tx.amount < 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    {formatAmount(tx.amount, currencySymbols[tx.currency] ?? "$")}
                   </p>
                   {tx.is_repayment && (
                     <span className="text-xs text-blue-600">Repayment</span>

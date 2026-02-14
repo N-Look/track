@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { TransactionForm } from "@/components/transaction-form";
+import { QuickAdd } from "@/components/quick-add";
 import { TransactionList } from "./transaction-list";
 
 export default async function TransactionsPage() {
@@ -17,7 +18,10 @@ export default async function TransactionsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Transactions</h1>
-        <TransactionForm accounts={accounts ?? []} />
+        <div className="flex gap-2">
+          <QuickAdd accounts={accounts ?? []} />
+          <TransactionForm accounts={accounts ?? []} />
+        </div>
       </div>
 
       <TransactionList

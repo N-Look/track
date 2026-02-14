@@ -17,6 +17,7 @@ import {
 import { Check, Pencil, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
+import { formatAmount } from "@/lib/currency";
 
 type ImportedTransaction = Tables<"imported_transactions">;
 
@@ -241,7 +242,9 @@ export function ImportReview({
                         className="w-28 ml-auto"
                       />
                     ) : (
-                      `$${display.amount.toFixed(2)}`
+                      <span className={display.amount < 0 ? "text-emerald-400" : "text-red-400"}>
+                        {formatAmount(display.amount)}
+                      </span>
                     )}
                   </TableCell>
                   <TableCell className="text-center">

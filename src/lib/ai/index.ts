@@ -17,4 +17,4 @@ export function getAIProvider(): AIProvider {
   }
 }
 
-export type { AIProvider, ExtractedTransaction } from "./types";
+export type { AIProvider, ExtractedTransaction, QuickAddResult } from "./types";

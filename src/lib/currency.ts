@@ -29,3 +29,16 @@ export const currencySymbols: Record<string, string> = {
   TTD: "TT$",
   USD: "US$",
 };
+
+/**
+ * Format a transaction amount for display.
+ * Withdrawals (positive) → "$100.00"
+ * Deposits (negative) → "$(100.00)"
+ */
+export function formatAmount(amount: number, symbol: string = "$"): string {
+  const abs = Math.abs(amount).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return amount < 0 ? `${symbol}(${abs})` : `${symbol}${abs}`;
+}
