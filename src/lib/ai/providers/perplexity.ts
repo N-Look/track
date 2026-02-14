@@ -57,12 +57,17 @@ export function createPerplexityProvider(apiKey: string): AIProvider {
 - confidence (0-100, how confident you are this is correctly parsed)
 - original_text (the raw line from the statement)
 
-CRITICAL — Correctly classify each transaction as a withdrawal or deposit:
-- Bank statements often have SEPARATE COLUMNS for "Withdrawals ($)" and "Deposits ($)". If a value appears in the Withdrawals column, the amount must be POSITIVE. If it appears in the Deposits column, the amount must be NEGATIVE.
+CRITICAL — You MUST correctly classify each transaction as a withdrawal or deposit:
+- The extracted PDF text contains a TABLE with separate columns. One column is for "Withdrawals ($)" and another for "Deposits ($)". Each row has a value in ONLY ONE of these columns — the other column is empty/blank for that row.
 - Other formats may use labels like "DR"/"CR", "debit"/"credit", or show +/- signs.
-- Deposits (money IN: e-transfers received, payroll, refunds, credits) → NEGATIVE amount
-- Withdrawals (money OUT: purchases, payments, fees, debits) → POSITIVE amount
-- Look at the column headers and table structure to determine which column each amount belongs to. Do NOT treat all amounts as withdrawals.
+
+- When the amount appears in the WITHDRAWALS column → POSITIVE amount
+- When the amount appears in the DEPOSITS column → NEGATIVE amount
+- To determine which column a value belongs to, look at the spacing/positioning in the extracted text. Typically the withdrawal amount appears first (left) and the deposit amount appears further right, or vice versa. Match the position of each number to the column header positions.
+- Common deposit indicators: e-transfers RECEIVED, payroll, refunds, credits, interest earned
+- Common withdrawal indicators: purchases, bill payments, e-transfers SENT, fees, point-of-sale transactions, pre-authorized debits
+- The running balance column (if present) is NOT a transaction — do not include it. It usually appears as the rightmost number on each row.
+- Do NOT default everything to the same sign. Each row must be individually classified.
 
 Return ONLY a JSON array of objects with these exact fields. No markdown, no explanation, just the JSON array.
 
@@ -79,12 +84,24 @@ ${text}`;
         { role: "user", content: prompt },
       ]);
 
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        throw new Error("AI did not return valid JSON. Response: " + content.slice(0, 200));
+      let jsonStr = content.match(/\[[\s\S]*\]/)?.[0];
+
+      // If no complete array, try to salvage truncated JSON
+      if (!jsonStr) {
+        const arrayStart = content.indexOf("[");
+        if (arrayStart === -1) {
+          throw new Error("AI did not return valid JSON. Response: " + content.slice(0, 200));
+        }
+        // Find the last complete object (ending with "}")
+        const partial = content.slice(arrayStart);
+        const lastBrace = partial.lastIndexOf("}");
+        if (lastBrace === -1) {
+          throw new Error("AI did not return valid JSON. Response: " + content.slice(0, 200));
+        }
+        jsonStr = partial.slice(0, lastBrace + 1) + "]";
       }
 
-      const parsed: ExtractedTransaction[] = JSON.parse(jsonMatch[0]);
+      const parsed: ExtractedTransaction[] = JSON.parse(jsonStr);
 
       return parsed.map((t) => ({
         date: t.date || new Date().toISOString().split("T")[0],

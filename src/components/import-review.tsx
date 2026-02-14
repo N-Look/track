@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Check, Pencil, X, Loader2 } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Check, Pencil, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 import { formatAmount } from "@/lib/currency";
@@ -102,6 +102,13 @@ export function ImportReview({
   function cancelEdit() {
     setEditingId(null);
     setEditDraft({});
+  }
+
+  function toggleSign(id: string) {
+    const t = transactions.find((tx) => tx.id === id);
+    if (!t) return;
+    const currentAmount = edits[id]?.amount ?? t.amount;
+    setEdits({ ...edits, [id]: { ...edits[id], amount: -currentAmount } });
   }
 
   function getDisplay(t: ImportedTransaction) {
@@ -242,9 +249,24 @@ export function ImportReview({
                         className="w-28 ml-auto"
                       />
                     ) : (
-                      <span className={display.amount < 0 ? "text-emerald-400" : "text-red-400"}>
-                        {formatAmount(display.amount)}
-                      </span>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          title={display.amount < 0 ? "Deposit — click to make withdrawal" : "Withdrawal — click to make deposit"}
+                          onClick={() => toggleSign(t.id)}
+                        >
+                          {display.amount < 0 ? (
+                            <ArrowDownLeft className="h-3.5 w-3.5 text-emerald-400" />
+                          ) : (
+                            <ArrowUpRight className="h-3.5 w-3.5 text-red-400" />
+                          )}
+                        </Button>
+                        <span className={display.amount < 0 ? "text-emerald-400" : "text-red-400"}>
+                          {formatAmount(display.amount)}
+                        </span>
+                      </div>
                     )}
                   </TableCell>
                   <TableCell className="text-center">

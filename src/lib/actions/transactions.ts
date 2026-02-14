@@ -166,6 +166,35 @@ export async function updateTransaction(formData: FormData) {
   revalidatePath("/accounts");
 }
 
+export async function updateTransactionSplits(
+  transactionId: string,
+  splits: { debtor_name: string; amount_owed: number }[]
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Delete existing splits
+  await supabase.from("splits").delete().eq("transaction_id", transactionId);
+
+  // Insert new splits if any
+  if (splits.length > 0) {
+    const rows = splits.map((s) => ({
+      transaction_id: transactionId,
+      debtor_name: s.debtor_name,
+      amount_owed: s.amount_owed,
+    }));
+    const { error } = await supabase.from("splits").insert(rows);
+    if (error) throw new Error(error.message);
+  }
+
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  revalidatePath("/balances");
+}
+
 export async function deleteTransaction(id: string) {
   const supabase = await createClient();
 

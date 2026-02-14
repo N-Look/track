@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteTransaction } from "@/lib/actions/transactions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -77,18 +76,24 @@ export function TransactionList({
   const [filterAccount, setFilterAccount] = useState("all");
   const [filterCurrency, setFilterCurrency] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [filterMonth, setFilterMonth] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingTx, setEditingTx] = useState<TransactionWithRelations | null>(null);
+
+  // Build unique months from transactions (YYYY-MM)
+  const months = Array.from(
+    new Set(
+      transactions
+        .map((tx) => tx.transaction_date?.slice(0, 7))
+        .filter(Boolean) as string[]
+    )
+  ).sort((a, b) => b.localeCompare(a));
 
   const filtered = transactions.filter((tx) => {
     if (filterAccount !== "all" && tx.account_id !== filterAccount) return false;
     if (filterCurrency !== "all" && tx.currency !== filterCurrency) return false;
     if (filterCategory !== "all" && tx.category !== filterCategory) return false;
-    if (dateFrom && tx.transaction_date && tx.transaction_date < dateFrom)
-      return false;
-    if (dateTo && tx.transaction_date && tx.transaction_date > dateTo)
+    if (filterMonth !== "all" && tx.transaction_date && !tx.transaction_date.startsWith(filterMonth))
       return false;
     return true;
   });
@@ -147,20 +152,26 @@ export function TransactionList({
             ))}
           </SelectContent>
         </Select>
-        <Input
-          type="date"
-          placeholder="From"
-          value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
-          className="sm:w-[160px]"
-        />
-        <Input
-          type="date"
-          placeholder="To"
-          value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
-          className="sm:w-[160px]"
-        />
+        <Select value={filterMonth} onValueChange={setFilterMonth}>
+          <SelectTrigger className="sm:w-[160px]">
+            <SelectValue placeholder="All Months" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Months</SelectItem>
+            {months.map((m) => {
+              const [y, mo] = m.split("-");
+              const label = new Date(parseInt(y), parseInt(mo) - 1).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+              });
+              return (
+                <SelectItem key={m} value={m}>
+                  {label}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
       </div>
 
       {filtered.length === 0 ? (
