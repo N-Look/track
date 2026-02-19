@@ -36,7 +36,7 @@ export function createGroqProvider(apiKey: string): AIProvider {
         model,
         messages,
         temperature: 0.1,
-        max_tokens: 16000,
+        max_tokens: 8192  ,
       }),
     });
 
