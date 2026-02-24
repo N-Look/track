@@ -45,6 +45,7 @@ interface TransactionWithRelations {
   is_transfer_to_third_party: boolean | null;
   fee_lost: number | null;
   account_id: string | null;
+  balance_direction: "credit" | "debit";
   splits: { id: string; debtor_name: string; amount_owed: number; is_paid: boolean | null }[];
   accounts: { name: string } | null;
 }
@@ -216,7 +217,7 @@ export function TransactionList({
                       </TableCell>
                       <TableCell>{tx.description}</TableCell>
                       <TableCell>{tx.accounts?.name ?? "—"}</TableCell>
-                      <TableCell className={`whitespace-nowrap font-medium ${tx.amount < 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      <TableCell className={`whitespace-nowrap font-medium ${tx.balance_direction === "credit" ? "text-emerald-400" : "text-red-400"}`}>
                         {formatAmount(tx.amount, symbol)}
                       </TableCell>
                       <TableCell>
@@ -284,7 +285,7 @@ export function TransactionList({
                     <div className="min-w-0 flex-1">
                       <div className="flex justify-between items-start gap-2">
                         <p className="font-semibold text-base truncate pr-2">{tx.description}</p>
-                        <p className={`font-bold shrink-0 text-base ${tx.amount < 0 ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"}`}>
+                        <p className={`font-bold shrink-0 text-base ${tx.balance_direction === "credit" ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"}`}>
                           {formatAmount(tx.amount, symbol)}
                         </p>
                       </div>

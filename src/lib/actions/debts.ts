@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
+import { applyBalanceChange } from "./balance";
 
 type CurrencyType = Database["public"]["Enums"]["currency_type"];
 
@@ -18,7 +19,7 @@ export async function createDebt(formData: FormData) {
   const currency = formData.get("currency") as CurrencyType;
   const description = (formData.get("description") as string) || null;
 
-  // Create a memo transaction for audit trail
+  // Create a memo transaction for audit trail (no account, just a record)
   const { data: transaction, error: txError } = await supabase
     .from("transactions")
     .insert({
@@ -29,6 +30,7 @@ export async function createDebt(formData: FormData) {
       currency,
       category: "other" as Database["public"]["Enums"]["transaction_category"],
       is_repayment: false,
+      balance_direction: "debit",
     })
     .select()
     .single();
@@ -67,7 +69,7 @@ export async function markDebtAsPaid(debtId: string, accountId: string | null) {
 
   if (!debt) throw new Error("Debt not found");
 
-  // Create payment transaction for audit trail
+  // Create payment transaction for audit trail — debt payment = debit (money out)
   const { error: txError } = await supabase.from("transactions").insert({
     user_id: user.id,
     account_id: accountId,
@@ -76,33 +78,14 @@ export async function markDebtAsPaid(debtId: string, accountId: string | null) {
     currency: debt.currency,
     category: "other" as Database["public"]["Enums"]["transaction_category"],
     is_repayment: true,
+    balance_direction: "debit",
   });
 
   if (txError) throw new Error(txError.message);
 
   // Update account balance if an account was selected
   if (accountId) {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("current_balance, category")
-      .eq("id", accountId)
-      .single();
-
-    if (account) {
-      // Credit cards: add to balance (paying with credit increases balance)
-      // Other accounts: subtract from balance (money leaving account)
-      const newBalance =
-        account.category === "credit_card"
-          ? (account.current_balance ?? 0) + debt.amount
-          : (account.current_balance ?? 0) - debt.amount;
-      await supabase
-        .from("accounts")
-        .update({
-          current_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", accountId);
-    }
+    await applyBalanceChange(accountId, debt.amount, "debit");
   }
 
   // Mark debt as paid

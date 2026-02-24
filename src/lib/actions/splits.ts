@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { applyBalanceChange } from "./balance";
 
 export async function markSplitAsPaid(
   splitId: string,
@@ -32,7 +33,7 @@ export async function markSplitAsPaid(
   const txDescription = (split.transactions as { description: string; currency: string } | null)?.description ?? "Unknown";
   const txCurrency = (split.transactions as { description: string; currency: string } | null)?.currency ?? "CAD";
 
-  // Create transaction for audit trail
+  // Create transaction for audit trail — split received = credit (money in)
   await supabase.from("transactions").insert({
     user_id: user.id,
     account_id: receivingAccountId,
@@ -41,30 +42,12 @@ export async function markSplitAsPaid(
     currency: txCurrency as "CAD" | "TTD" | "USD",
     category: "other" as const,
     is_repayment: true,
+    balance_direction: "credit",
   });
 
   // Credit the receiving account
   if (receivingAccountId) {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("current_balance, category")
-      .eq("id", receivingAccountId)
-      .single();
-
-    if (account) {
-      // Credit cards: subtract (paying off balance), others: add
-      const newBalance =
-        account.category === "credit_card"
-          ? (account.current_balance ?? 0) - split.amount_owed
-          : (account.current_balance ?? 0) + split.amount_owed;
-      await supabase
-        .from("accounts")
-        .update({
-          current_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", receivingAccountId);
-    }
+    await applyBalanceChange(receivingAccountId, split.amount_owed, "credit");
   }
 
   revalidatePath("/balances");

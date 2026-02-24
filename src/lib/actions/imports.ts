@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAIProvider } from "@/lib/ai";
 import { PDFParse } from "pdf-parse";
+import { computeBalanceChange } from "./balance";
 
 export async function parseStatement(formData: FormData) {
   const supabase = await createClient();
@@ -121,7 +122,7 @@ export async function confirmImportedTransactions(
 
   if (!account) throw new Error("Account not found");
 
-  // Create real transactions from selected imports
+  // Create real transactions from selected imports — imported transactions are always debits
   const realTransactions = selected.map((t) => {
     const edit = edits[t.id];
     return {
@@ -131,6 +132,7 @@ export async function confirmImportedTransactions(
       amount: edit?.amount ?? t.amount,
       currency: t.currency,
       transaction_date: edit?.transaction_date ?? t.transaction_date,
+      balance_direction: "debit" as const,
     };
   });
 
@@ -140,12 +142,10 @@ export async function confirmImportedTransactions(
 
   if (insertError) throw new Error(insertError.message);
 
-  // Update account balance
+  // Update account balance using centralized logic
   const totalAmount = realTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const newBalance =
-    account.category === "credit_card"
-      ? (account.current_balance ?? 0) + totalAmount
-      : (account.current_balance ?? 0) - totalAmount;
+  const delta = computeBalanceChange(account.category, totalAmount, "debit");
+  const newBalance = (account.current_balance ?? 0) + delta;
 
   await supabase
     .from("accounts")

@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,6 +54,7 @@ interface TransactionEditDialogProps {
     currency: string;
     transaction_date: string | null;
     category: string;
+    balance_direction: "credit" | "debit";
     is_transfer_to_third_party: boolean | null;
     fee_lost: number | null;
     splits: { id: string; debtor_name: string; amount_owed: number; is_paid: boolean | null }[];
@@ -76,6 +78,7 @@ export function TransactionEditDialog({
     (transaction.fee_lost ?? 0).toString()
   );
   const isTransfer = transaction.is_transfer_to_third_party ?? false;
+  const [isCredit, setIsCredit] = useState(transaction.balance_direction === "credit");
 
   const [splits, setSplits] = useState<SplitRow[]>(
     transaction.splits.length > 0
@@ -128,6 +131,7 @@ export function TransactionEditDialog({
       formData.set("amount", amount);
       formData.set("transaction_date", date);
       formData.set("category", category);
+      formData.set("balance_direction", isCredit ? "credit" : "debit");
       if (isTransfer) {
         formData.set("fee_lost", feeLost);
       }
@@ -221,6 +225,19 @@ export function TransactionEditDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Direction toggle */}
+          <div className="flex items-center justify-between glass-input rounded-xl p-3 border border-border/50">
+            <div>
+              <Label htmlFor="edit-credit" className="cursor-pointer">Money In (Credit)</Label>
+              <p className="text-xs text-muted-foreground">Refund, repayment, or deposit that increases your balance</p>
+            </div>
+            <Switch
+              id="edit-credit"
+              checked={isCredit}
+              onCheckedChange={setIsCredit}
+            />
           </div>
 
           {/* Splits section */}

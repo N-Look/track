@@ -240,6 +240,7 @@ export type Database = {
         Row: {
           account_id: string | null
           amount: number
+          balance_direction: "credit" | "debit"
           category: Database["public"]["Enums"]["transaction_category"]
           created_at: string | null
           currency: Database["public"]["Enums"]["currency_type"]
@@ -254,6 +255,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           amount: number
+          balance_direction?: "credit" | "debit"
           category?: Database["public"]["Enums"]["transaction_category"]
           created_at?: string | null
           currency: Database["public"]["Enums"]["currency_type"]
@@ -268,6 +270,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           amount?: number
+          balance_direction?: "credit" | "debit"
           category?: Database["public"]["Enums"]["transaction_category"]
           created_at?: string | null
           currency?: Database["public"]["Enums"]["currency_type"]

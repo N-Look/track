@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
+import { applyBalanceChange } from "./balance";
 
 type CurrencyType = Database["public"]["Enums"]["currency_type"];
 
@@ -19,16 +20,10 @@ export async function settleUp(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("current_balance, category")
-    .eq("id", accountId)
-    .single();
-
-  if (!account) throw new Error("Account not found");
+  const balance_direction = direction === "they_pay" ? "credit" : "debit" as const;
 
   if (direction === "they_pay") {
-    // They owe you → mark splits as paid, credit your account
+    // They owe you -> mark splits as paid, credit your account
     const { data: splits } = await supabase
       .from("splits")
       .select("*, transactions(currency)")
@@ -50,7 +45,6 @@ export async function settleUp(
           .eq("id", split.id);
         remaining -= split.amount_owed;
       } else {
-        // Partial: reduce the split amount
         await supabase
           .from("splits")
           .update({ amount_owed: split.amount_owed - remaining })
@@ -58,19 +52,8 @@ export async function settleUp(
         remaining = 0;
       }
     }
-
-    // Credit the receiving account
-    const newBalance =
-      account.category === "credit_card"
-        ? (account.current_balance ?? 0) - amount
-        : (account.current_balance ?? 0) + amount;
-
-    await supabase
-      .from("accounts")
-      .update({ current_balance: newBalance, updated_at: new Date().toISOString() })
-      .eq("id", accountId);
   } else {
-    // You owe them → mark debts as paid, debit your account
+    // You owe them -> mark debts as paid, debit your account
     const { data: debts } = await supabase
       .from("debts")
       .select("*")
@@ -95,18 +78,10 @@ export async function settleUp(
         remaining = 0;
       }
     }
-
-    // Debit the source account
-    const newBalance =
-      account.category === "credit_card"
-        ? (account.current_balance ?? 0) + amount
-        : (account.current_balance ?? 0) - amount;
-
-    await supabase
-      .from("accounts")
-      .update({ current_balance: newBalance, updated_at: new Date().toISOString() })
-      .eq("id", accountId);
   }
+
+  // Apply balance change using the helper
+  await applyBalanceChange(accountId, amount, balance_direction);
 
   // Create a settlement transaction for audit trail
   await supabase.from("transactions").insert({
@@ -118,6 +93,7 @@ export async function settleUp(
     category: "transfer",
     transaction_date: new Date().toISOString().split("T")[0],
     is_repayment: true,
+    balance_direction,
   });
 
   revalidatePath("/balances");

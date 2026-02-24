@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/types";
+import { applyBalanceChange, reverseBalanceChange } from "./balance";
 
 type CurrencyType = Database["public"]["Enums"]["currency_type"];
 
@@ -32,6 +33,8 @@ export async function createTransaction(formData: FormData) {
   const splitsJson = formData.get("splits") as string | null;
   const splits: SplitInput[] = splitsJson ? JSON.parse(splitsJson) : [];
 
+  const balance_direction = is_repayment ? "credit" : "debit" as const;
+
   // Insert the transaction
   const { data: transaction, error: txError } = await supabase
     .from("transactions")
@@ -46,6 +49,7 @@ export async function createTransaction(formData: FormData) {
       is_repayment,
       is_transfer_to_third_party: is_transfer,
       fee_lost: is_transfer ? fee_lost : 0,
+      balance_direction,
     })
     .select()
     .single();
@@ -67,27 +71,7 @@ export async function createTransaction(formData: FormData) {
 
   // Update account balance
   if (account_id) {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("current_balance, category")
-      .eq("id", account_id)
-      .single();
-
-    if (account) {
-      // Credit cards: add to balance (tracks total spent)
-      // Other accounts: subtract from balance
-      const newBalance =
-        account.category === "credit_card"
-          ? (account.current_balance ?? 0) + amount
-          : (account.current_balance ?? 0) - amount;
-      await supabase
-        .from("accounts")
-        .update({
-          current_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", account_id);
-    }
+    await applyBalanceChange(account_id, amount, balance_direction);
   }
 
   revalidatePath("/transactions");
@@ -106,6 +90,7 @@ export async function updateTransaction(formData: FormData) {
   const fee_lost = formData.get("fee_lost")
     ? parseFloat(formData.get("fee_lost") as string)
     : null;
+  const newDirection = formData.get("balance_direction") as "credit" | "debit" | null;
 
   // Fetch old transaction to calculate balance diff
   const { data: oldTx } = await supabase
@@ -116,7 +101,9 @@ export async function updateTransaction(formData: FormData) {
 
   if (!oldTx) throw new Error("Transaction not found");
 
-  const diff = amount - oldTx.amount;
+  const direction = newDirection ?? oldTx.balance_direction;
+  const amountChanged = amount !== oldTx.amount;
+  const directionChanged = direction !== oldTx.balance_direction;
 
   // Update the transaction
   const updateData: Record<string, unknown> = {
@@ -124,6 +111,8 @@ export async function updateTransaction(formData: FormData) {
     amount,
     transaction_date: transaction_date || null,
     category,
+    balance_direction: direction,
+    is_repayment: direction === "credit",
   };
   if (fee_lost !== null) {
     updateData.fee_lost = fee_lost;
@@ -135,29 +124,10 @@ export async function updateTransaction(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
-  // Adjust account balance by the diff
-  if (oldTx.account_id && diff !== 0) {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("current_balance, category")
-      .eq("id", oldTx.account_id)
-      .single();
-
-    if (account) {
-      // Credit cards: add diff (higher amount = more spent)
-      // Other accounts: subtract diff (higher amount = less balance)
-      const newBalance =
-        account.category === "credit_card"
-          ? (account.current_balance ?? 0) + diff
-          : (account.current_balance ?? 0) - diff;
-      await supabase
-        .from("accounts")
-        .update({
-          current_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", oldTx.account_id);
-    }
+  // Adjust account balance if amount or direction changed
+  if (oldTx.account_id && (amountChanged || directionChanged)) {
+    await reverseBalanceChange(oldTx.account_id, oldTx.amount, oldTx.balance_direction);
+    await applyBalanceChange(oldTx.account_id, amount, direction);
   }
 
   revalidatePath("/transactions");
@@ -220,29 +190,13 @@ export async function deleteTransaction(id: string) {
   const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  // Reverse balance change
+  // Reverse balance change using stored direction
   if (transaction.account_id) {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("current_balance, category")
-      .eq("id", transaction.account_id)
-      .single();
-
-    if (account) {
-      // Credit cards: subtract from total spent
-      // Other accounts: add back to balance
-      const newBalance =
-        account.category === "credit_card"
-          ? (account.current_balance ?? 0) - transaction.amount
-          : (account.current_balance ?? 0) + transaction.amount;
-      await supabase
-        .from("accounts")
-        .update({
-          current_balance: newBalance,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", transaction.account_id);
-    }
+    await reverseBalanceChange(
+      transaction.account_id,
+      transaction.amount,
+      transaction.balance_direction
+    );
   }
 
   revalidatePath("/transactions");

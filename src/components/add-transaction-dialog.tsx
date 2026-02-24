@@ -341,7 +341,10 @@ export function AddTransactionDialog({
                             {/* Toggles */}
                             <div className="space-y-3 glass-input rounded-xl p-3 border border-border/50">
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="repayment" className="cursor-pointer">Repayment</Label>
+                                    <div>
+                                        <Label htmlFor="repayment" className="cursor-pointer">Money In (Credit)</Label>
+                                        <p className="text-xs text-muted-foreground">Refund, repayment, or deposit that increases your balance</p>
+                                    </div>
                                     <Switch
                                         id="repayment"
                                         checked={isRepayment}

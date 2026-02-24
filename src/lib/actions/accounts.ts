@@ -72,3 +72,42 @@ export async function deleteAccount(id: string) {
   revalidatePath("/accounts");
   revalidatePath("/dashboard");
 }
+
+export async function recalculateBalance(accountId: string) {
+  const supabase = await createClient();
+
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("category")
+    .eq("id", accountId)
+    .single();
+
+  if (!account) throw new Error("Account not found");
+
+  const { data: transactions } = await supabase
+    .from("transactions")
+    .select("amount, balance_direction")
+    .eq("account_id", accountId);
+
+  let balance = 0;
+  for (const tx of transactions ?? []) {
+    if (tx.balance_direction === "debit") {
+      balance += account.category === "credit_card" ? tx.amount : -tx.amount;
+    } else {
+      balance += account.category === "credit_card" ? -tx.amount : tx.amount;
+    }
+  }
+
+  const { error } = await supabase
+    .from("accounts")
+    .update({
+      current_balance: balance,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", accountId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/accounts");
+  revalidatePath("/dashboard");
+  revalidatePath(`/accounts/${accountId}`);
+}

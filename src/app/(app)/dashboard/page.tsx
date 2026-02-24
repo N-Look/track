@@ -301,7 +301,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className={`font-semibold ${tx.amount < 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  <p className={`font-semibold ${tx.balance_direction === "credit" ? "text-emerald-400" : "text-red-400"}`}>
                     {formatAmount(tx.amount, currencySymbols[tx.currency] ?? "$")}
                   </p>
                   {tx.is_repayment && (
