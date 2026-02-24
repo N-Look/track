@@ -31,6 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import { Plus, MoreVertical, Pencil, Trash2, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
@@ -42,6 +43,7 @@ export function AccountActions({ account }: { account?: Tables<"accounts"> }) {
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState<string>(account?.category ?? "bank");
   const [currency, setCurrency] = useState<string>(account?.currency ?? "CAD");
+  const [excludeFromTotals, setExcludeFromTotals] = useState(account?.exclude_from_totals ?? false);
   const [newBalance, setNewBalance] = useState<string>("");
 
   const isEdit = !!account;
@@ -53,6 +55,7 @@ export function AccountActions({ account }: { account?: Tables<"accounts"> }) {
       const formData = new FormData(e.currentTarget);
       formData.set("category", category);
       formData.set("currency", currency);
+      formData.set("exclude_from_totals", excludeFromTotals.toString());
 
       if (isEdit) {
         await updateAccount(account.id, formData);
@@ -145,6 +148,8 @@ export function AccountActions({ account }: { account?: Tables<"accounts"> }) {
               setCategory={setCategory}
               currency={currency}
               setCurrency={setCurrency}
+              excludeFromTotals={excludeFromTotals}
+              setExcludeFromTotals={setExcludeFromTotals}
               loading={loading}
               onSubmit={handleSubmit}
               submitLabel="Save"
@@ -197,6 +202,8 @@ export function AccountActions({ account }: { account?: Tables<"accounts"> }) {
           setCategory={setCategory}
           currency={currency}
           setCurrency={setCurrency}
+          excludeFromTotals={excludeFromTotals}
+          setExcludeFromTotals={setExcludeFromTotals}
           loading={loading}
           onSubmit={handleSubmit}
           submitLabel="Create"
@@ -212,6 +219,8 @@ function AccountForm({
   setCategory,
   currency,
   setCurrency,
+  excludeFromTotals,
+  setExcludeFromTotals,
   loading,
   onSubmit,
   submitLabel,
@@ -221,6 +230,8 @@ function AccountForm({
   setCategory: (v: string) => void;
   currency: string;
   setCurrency: (v: string) => void;
+  excludeFromTotals: boolean;
+  setExcludeFromTotals: (v: boolean) => void;
   loading: boolean;
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   submitLabel: string;
@@ -256,6 +267,17 @@ function AccountForm({
             <SelectItem value="USD">USD</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div className="flex items-center justify-between rounded-xl border border-border/50 p-3">
+        <div>
+          <Label htmlFor="exclude-totals" className="cursor-pointer">Exclude from totals</Label>
+          <p className="text-xs text-muted-foreground">Hide this account from dashboard total balance</p>
+        </div>
+        <Switch
+          id="exclude-totals"
+          checked={excludeFromTotals}
+          onCheckedChange={setExcludeFromTotals}
+        />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Saving..." : submitLabel}

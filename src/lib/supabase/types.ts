@@ -19,6 +19,7 @@ export type Database = {
           category: Database["public"]["Enums"]["account_category"]
           currency: Database["public"]["Enums"]["currency_type"]
           current_balance: number | null
+          exclude_from_totals: boolean
           id: string
           name: string
           updated_at: string | null
@@ -28,6 +29,7 @@ export type Database = {
           category: Database["public"]["Enums"]["account_category"]
           currency?: Database["public"]["Enums"]["currency_type"]
           current_balance?: number | null
+          exclude_from_totals?: boolean
           id?: string
           name: string
           updated_at?: string | null
@@ -37,6 +39,7 @@ export type Database = {
           category?: Database["public"]["Enums"]["account_category"]
           currency?: Database["public"]["Enums"]["currency_type"]
           current_balance?: number | null
+          exclude_from_totals?: boolean
           id?: string
           name?: string
           updated_at?: string | null

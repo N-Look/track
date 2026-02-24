@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { AccountCard } from "@/components/account-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { convert, currencySymbols as cSymbols, formatAmount } from "@/lib/currency";
 
@@ -77,10 +76,11 @@ export default async function DashboardPage() {
 
   const sortedPeople = Object.keys(personBalances).sort();
 
-  // Calculate total balances per currency (exclude credit cards)
+  // Calculate total balances per currency (exclude credit cards and excluded accounts)
   const totalsByCurrency: Record<string, number> = {};
   (accounts ?? []).forEach((a) => {
     if (a.category === "credit_card") return;
+    if (a.exclude_from_totals) return;
     totalsByCurrency[a.currency] =
       (totalsByCurrency[a.currency] ?? 0) + (a.current_balance ?? 0);
   });

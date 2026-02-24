@@ -18,12 +18,15 @@ export async function createAccount(formData: FormData) {
   const category = formData.get("category") as AccountCategory;
   const currency = formData.get("currency") as CurrencyType;
 
+  const exclude_from_totals = formData.get("exclude_from_totals") === "true";
+
   const { error } = await supabase.from("accounts").insert({
     user_id: user.id,
     name,
     category,
     currency,
     current_balance: 0,
+    exclude_from_totals,
   });
 
   if (error) throw new Error(error.message);
@@ -37,9 +40,11 @@ export async function updateAccount(id: string, formData: FormData) {
   const category = formData.get("category") as AccountCategory;
   const currency = formData.get("currency") as CurrencyType;
 
+  const exclude_from_totals = formData.get("exclude_from_totals") === "true";
+
   const { error } = await supabase
     .from("accounts")
-    .update({ name, category, currency, updated_at: new Date().toISOString() })
+    .update({ name, category, currency, exclude_from_totals, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) throw new Error(error.message);
