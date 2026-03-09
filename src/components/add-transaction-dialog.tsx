@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createTransaction } from "@/lib/actions/transactions";
+import { createTransaction, createAccountTransfer } from "@/lib/actions/transactions";
 import { parseReceipt, parseText } from "@/lib/actions/quick-add";
 import type { QuickAddResult } from "@/lib/ai/types";
 import { Button } from "@/components/ui/button";
@@ -49,8 +49,10 @@ interface SplitRow {
 
 export function AddTransactionDialog({
     accounts,
+    defaultAccountId,
 }: {
     accounts: Tables<"accounts">[];
+    defaultAccountId?: string;
 }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -58,20 +60,20 @@ export function AddTransactionDialog({
     const [activeTab, setActiveTab] = useState("manual");
 
     // Manual Form State
-    const [accountId, setAccountId] = useState("");
+    const [accountId, setAccountId] = useState(defaultAccountId ?? "");
     const [description, setDescription] = useState("");
     const [amount, setAmount] = useState("");
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     const [category, setCategory] = useState("other");
     const [isRepayment, setIsRepayment] = useState(false);
     const [isTransfer, setIsTransfer] = useState(false);
+    const [toAccountId, setToAccountId] = useState("");
+    const [transferNote, setTransferNote] = useState("");
     const [hasSplits, setHasSplits] = useState(false);
     const [splitMode, setSplitMode] = useState<"manual" | "equal">("manual");
     const [includeSelf, setIncludeSelf] = useState(true);
     const [splitNames, setSplitNames] = useState<string[]>([""]);
     const [splits, setSplits] = useState<SplitRow[]>([]);
-    const [amountSent, setAmountSent] = useState("");
-    const [netReceived, setNetReceived] = useState("");
 
     // AI State
     const [parsing, setParsing] = useState(false);
@@ -81,26 +83,22 @@ export function AddTransactionDialog({
     const selectedFileRef = useRef<File | null>(null);
 
     const selectedAccount = accounts.find((a) => a.id === accountId);
-    const feeLost =
-        isTransfer && amountSent && netReceived
-            ? (parseFloat(amountSent) - parseFloat(netReceived)).toFixed(2)
-            : "0.00";
 
     function resetForm() {
-        setAccountId("");
+        setAccountId(defaultAccountId ?? "");
         setDescription("");
         setAmount("");
         setDate(new Date().toISOString().split("T")[0]);
         setCategory("other");
         setIsRepayment(false);
         setIsTransfer(false);
+        setToAccountId("");
+        setTransferNote("");
         setHasSplits(false);
         setSplitMode("manual");
         setIncludeSelf(true);
         setSplitNames([""]);
         setSplits([]);
-        setAmountSent("");
-        setNetReceived("");
         setAiText("");
         setImagePreview(null);
         selectedFileRef.current = null;
@@ -182,25 +180,39 @@ export function AddTransactionDialog({
         setLoading(true);
 
         try {
+            if (isTransfer) {
+                if (!toAccountId) {
+                    toast.error("Please select a destination account");
+                    setLoading(false);
+                    return;
+                }
+                const formData = new FormData();
+                formData.set("from_account_id", accountId);
+                formData.set("to_account_id", toAccountId);
+                formData.set("amount", amount);
+                formData.set("transaction_date", date);
+                formData.set("note", transferNote);
+                await createAccountTransfer(formData);
+                toast.success("Transfer recorded");
+                setOpen(false);
+                resetForm();
+                router.refresh();
+                return;
+            }
+
             const formData = new FormData();
             formData.set("account_id", accountId);
             formData.set("description", description);
             formData.set("transaction_date", date);
             formData.set("category", category);
             formData.set("is_repayment", isRepayment.toString());
-            formData.set("is_transfer_to_third_party", isTransfer.toString());
+            formData.set("is_transfer_to_third_party", "false");
             formData.set("currency", selectedAccount?.currency ?? "CAD");
-
-            if (isTransfer) {
-                formData.set("amount", amountSent);
-                formData.set("fee_lost", feeLost);
-            } else {
-                formData.set("amount", amount);
-            }
+            formData.set("amount", amount);
 
             if (hasSplits) {
                 if (splitMode === "equal") {
-                    const totalAmount = parseFloat(isTransfer ? amountSent : amount) || 0;
+                    const totalAmount = parseFloat(amount) || 0;
                     const validNames = splitNames.filter((n) => n.trim());
                     const splitCount = validNames.length + (includeSelf ? 1 : 0);
                     if (validNames.length > 0 && splitCount > 0 && totalAmount > 0) {
@@ -308,7 +320,6 @@ export function AddTransactionDialog({
                                         placeholder="0.00"
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
-                                        disabled={isTransfer} // Handled separately in transfer mode
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -355,53 +366,59 @@ export function AddTransactionDialog({
                                     />
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <Label htmlFor="transfer" className="cursor-pointer">Third-Party Transfer</Label>
+                                    <div>
+                                        <Label htmlFor="transfer" className="cursor-pointer">Account Transfer</Label>
+                                        <p className="text-xs text-muted-foreground">Move money between your own accounts</p>
+                                    </div>
                                     <Switch
                                         id="transfer"
                                         checked={isTransfer}
                                         onCheckedChange={(v) => {
                                             setIsTransfer(v);
-                                            if (v) setIsRepayment(false);
+                                            if (v) { setIsRepayment(false); setHasSplits(false); }
                                         }}
                                     />
                                 </div>
-                                <div className="flex items-center justify-between">
-                                    <Label htmlFor="split" className="cursor-pointer">Split with others</Label>
-                                    <Switch
-                                        id="split"
-                                        checked={hasSplits}
-                                        onCheckedChange={setHasSplits}
-                                    />
-                                </div>
+                                {!isTransfer && (
+                                    <div className="flex items-center justify-between">
+                                        <Label htmlFor="split" className="cursor-pointer">Split with others</Label>
+                                        <Switch
+                                            id="split"
+                                            checked={hasSplits}
+                                            onCheckedChange={setHasSplits}
+                                        />
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Transfer Logic */}
+                            {/* Account Transfer Fields */}
                             {isTransfer && (
                                 <div className="space-y-3 animate-in slide-in-from-top-2 fade-in duration-200">
                                     <div className="space-y-2">
-                                        <Label htmlFor="amount_sent">Amount Sent (CAD)</Label>
-                                        <Input
-                                            id="amount_sent"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={amountSent}
-                                            onChange={(e) => setAmountSent(e.target.value)}
-                                        />
+                                        <Label>To Account</Label>
+                                        <Select value={toAccountId} onValueChange={setToAccountId}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select destination account" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {accounts
+                                                    .filter((a) => a.id !== accountId)
+                                                    .map((a) => (
+                                                        <SelectItem key={a.id} value={a.id}>
+                                                            {a.name} ({a.currency})
+                                                        </SelectItem>
+                                                    ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="net_received">Net Received (USD)</Label>
+                                        <Label htmlFor="transfer_note">Note (optional)</Label>
                                         <Input
-                                            id="net_received"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={netReceived}
-                                            onChange={(e) => setNetReceived(e.target.value)}
+                                            id="transfer_note"
+                                            placeholder="e.g. Monthly savings"
+                                            value={transferNote}
+                                            onChange={(e) => setTransferNote(e.target.value)}
                                         />
-                                    </div>
-                                    <div className="glass-light rounded-lg p-2 text-sm text-muted-foreground border border-border/50">
-                                        Calculated Fee Lost: <strong className="text-foreground">${feeLost}</strong>
                                     </div>
                                 </div>
                             )}

@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/table";
 import { currencySymbols, formatAmount } from "@/lib/currency";
 import { RecalculateButton } from "./recalculate-button";
+import { AddTransactionDialog } from "@/components/add-transaction-dialog";
+import { PayCreditCardDialog } from "@/components/pay-credit-card-dialog";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -29,11 +31,10 @@ export default async function AccountDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const [{ data: account }, { data: allAccounts }] = await Promise.all([
+    supabase.from("accounts").select("*").eq("id", id).single(),
+    supabase.from("accounts").select("*").order("name"),
+  ]);
 
   if (!account) notFound();
 
@@ -104,6 +105,16 @@ export default async function AccountDetailPage({
               })}
             </p>
           </div>
+          {account.category === "credit_card" && (
+            <PayCreditCardDialog
+              creditCardAccount={account}
+              bankAccounts={(allAccounts ?? []).filter((a) => a.category !== "credit_card")}
+            />
+          )}
+          <AddTransactionDialog
+            accounts={allAccounts ?? []}
+            defaultAccountId={account.id}
+          />
           <RecalculateButton accountId={account.id} />
         </div>
       </div>

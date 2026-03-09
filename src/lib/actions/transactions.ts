@@ -165,6 +165,73 @@ export async function updateTransactionSplits(
   revalidatePath("/balances");
 }
 
+export async function createAccountTransfer(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const from_account_id = formData.get("from_account_id") as string;
+  const to_account_id = formData.get("to_account_id") as string;
+  const amount = parseFloat(formData.get("amount") as string);
+  const transaction_date = formData.get("transaction_date") as string;
+  const note = (formData.get("note") as string)?.trim() || "";
+
+  if (!from_account_id || !to_account_id) throw new Error("Both accounts are required");
+  if (from_account_id === to_account_id) throw new Error("Cannot transfer to the same account");
+  if (!amount || amount <= 0) throw new Error("Amount must be greater than 0");
+
+  const { data: accountRows } = await supabase
+    .from("accounts")
+    .select("id, name, currency")
+    .in("id", [from_account_id, to_account_id]);
+
+  if (!accountRows || accountRows.length !== 2) throw new Error("One or both accounts not found");
+
+  const fromAccount = accountRows.find((a) => a.id === from_account_id)!;
+  const toAccount = accountRows.find((a) => a.id === to_account_id)!;
+
+  const fromDesc = note ? `Transfer to ${toAccount.name}: ${note}` : `Transfer to ${toAccount.name}`;
+  const toDesc = note ? `Transfer from ${fromAccount.name}: ${note}` : `Transfer from ${fromAccount.name}`;
+
+  const { error: err1 } = await supabase.from("transactions").insert({
+    user_id: user.id,
+    account_id: from_account_id,
+    description: fromDesc,
+    amount,
+    currency: fromAccount.currency as CurrencyType,
+    category: "transfer",
+    transaction_date: transaction_date || undefined,
+    is_repayment: false,
+    is_transfer_to_third_party: false,
+    balance_direction: "debit",
+  });
+  if (err1) throw new Error(err1.message);
+
+  const { error: err2 } = await supabase.from("transactions").insert({
+    user_id: user.id,
+    account_id: to_account_id,
+    description: toDesc,
+    amount,
+    currency: toAccount.currency as CurrencyType,
+    category: "transfer",
+    transaction_date: transaction_date || undefined,
+    is_repayment: true,
+    is_transfer_to_third_party: false,
+    balance_direction: "credit",
+  });
+  if (err2) throw new Error(err2.message);
+
+  await applyBalanceChange(from_account_id, amount, "debit");
+  await applyBalanceChange(to_account_id, amount, "credit");
+
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  revalidatePath("/balances");
+  revalidatePath("/accounts");
+}
+
 export async function deleteTransaction(id: string) {
   const supabase = await createClient();
 

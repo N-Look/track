@@ -1,3 +1,4 @@
+import { jsonrepair } from "jsonrepair";
 import type { AIProvider, ExtractedTransaction, QuickAddResult } from "../types";
 
 const VALID_CATEGORIES = [
@@ -104,7 +105,16 @@ ${text}`;
         jsonStr = partial.slice(0, lastBrace + 1) + "]";
       }
 
-      const parsed: ExtractedTransaction[] = JSON.parse(jsonStr);
+      // Strip thousands separators from numbers (e.g. 50,000.00 → 50000.00)
+      jsonStr = jsonStr.replace(/(\d),(\d{3})/g, "$1$2");
+
+      let parsed: ExtractedTransaction[];
+      try {
+        parsed = JSON.parse(jsonrepair(jsonStr));
+      } catch (e) {
+        console.error("Failed to parse JSON from Groq. Raw jsonStr:", jsonStr);
+        throw new Error(`AI returned unparseable JSON: ${(e as Error).message}. Raw (first 500 chars): ${jsonStr.slice(0, 500)}`);
+      }
 
       return parsed.map((t) => ({
         date: t.date || new Date().toISOString().split("T")[0],
@@ -151,7 +161,7 @@ Return ONLY the JSON object. No markdown, no explanation.`,
         throw new Error("AI did not return valid JSON. Response: " + content.slice(0, 200));
       }
 
-      return validateQuickAddResult(JSON.parse(jsonMatch[0]));
+      return validateQuickAddResult(JSON.parse(jsonrepair(jsonMatch[0])));
     },
 
     async parseNaturalLanguage(text: string, currency: string): Promise<QuickAddResult> {
@@ -184,7 +194,7 @@ Return ONLY the JSON object. No markdown, no explanation.`,
         throw new Error("AI did not return valid JSON. Response: " + content.slice(0, 200));
       }
 
-      return validateQuickAddResult(JSON.parse(jsonMatch[0]));
+      return validateQuickAddResult(JSON.parse(jsonrepair(jsonMatch[0])));
     },
   };
 }
