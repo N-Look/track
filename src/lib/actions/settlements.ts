@@ -26,9 +26,10 @@ export async function settleUp(
     // They owe you -> mark splits as paid, credit your account
     const { data: splits } = await supabase
       .from("splits")
-      .select("*, transactions(currency)")
+      .select("*, transactions(currency, transaction_date)")
       .eq("debtor_name", personName)
-      .eq("is_paid", false);
+      .eq("is_paid", false)
+      .order("created_at", { ascending: true });
 
     const matchingSplits = (splits ?? []).filter(
       (s) =>
@@ -59,7 +60,8 @@ export async function settleUp(
       .select("*")
       .eq("creditor_name", personName)
       .eq("currency", currency)
-      .eq("is_paid", false);
+      .eq("is_paid", false)
+      .order("created_at", { ascending: true });
 
     let remaining = amount;
     for (const debt of debts ?? []) {

@@ -20,7 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Handshake, Loader2 } from "lucide-react";
+import { Handshake, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
 
@@ -61,6 +61,14 @@ export function SettleDialog({
   const direction = netAmount > 0 ? "they_pay" : "you_pay";
   const absAmount = Math.abs(netAmount);
 
+  const parsedAmount = parseFloat(amount || "0");
+  const isPartial = parsedAmount > 0 && parsedAmount < absAmount;
+  const isFull = parsedAmount === absAmount;
+  const isOver = parsedAmount > absAmount;
+  const isInvalid = parsedAmount <= 0 || isNaN(parsedAmount);
+
+  const remaining = absAmount - parsedAmount;
+
   // Filter accounts to matching currency
   const matchingAccounts = accounts.filter(
     (a) => a.currency === selectedCurrency
@@ -77,17 +85,21 @@ export function SettleDialog({
   }
 
   async function handleSettle() {
-    if (!accountId || !amount) return;
+    if (!accountId || isInvalid) return;
     setLoading(true);
     try {
       await settleUp(
         personName,
         accountId,
         selectedCurrency as CurrencyType,
-        parseFloat(amount),
+        parsedAmount,
         direction as "they_pay" | "you_pay"
       );
-      toast.success(`Settled with ${personName}`);
+      toast.success(
+        isPartial
+          ? `Partial payment recorded with ${personName}`
+          : `Settled with ${personName}`
+      );
       setOpen(false);
       router.refresh();
     } catch (err) {
@@ -159,20 +171,47 @@ export function SettleDialog({
           )}
 
           <div className="space-y-2">
-            <Label>Amount</Label>
+            <div className="flex items-center justify-between">
+              <Label>Amount</Label>
+              <button
+                type="button"
+                onClick={() => setAmount(absAmount.toFixed(2))}
+                className="text-xs text-primary hover:underline font-medium"
+              >
+                Use full {currencySymbols[selectedCurrency]}{absAmount.toFixed(2)}
+              </button>
+            </div>
             <Input
               type="number"
               step="0.01"
-              min="0"
-              max={absAmount}
+              min="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              placeholder={`0.00`}
             />
-            {parseFloat(amount) < absAmount && (
-              <p className="text-xs text-muted-foreground">
-                Partial settlement ({currencySymbols[selectedCurrency]}
-                {(absAmount - parseFloat(amount || "0")).toFixed(2)} remaining)
-              </p>
+            {isPartial && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Partial payment &mdash; {currencySymbols[selectedCurrency]}
+                  {remaining.toFixed(2)} will remain outstanding
+                </span>
+              </div>
+            )}
+            {isFull && (
+              <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                <span>Full balance will be settled</span>
+              </div>
+            )}
+            {isOver && (
+              <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Amount exceeds outstanding balance by {currencySymbols[selectedCurrency]}
+                  {Math.abs(remaining).toFixed(2)}
+                </span>
+              </div>
             )}
           </div>
 
@@ -199,7 +238,7 @@ export function SettleDialog({
           <Button
             onClick={handleSettle}
             className="w-full"
-            disabled={loading || !accountId || !amount}
+            disabled={loading || !accountId || isInvalid}
           >
             {loading ? (
               <>
@@ -207,9 +246,13 @@ export function SettleDialog({
                 Settling...
               </>
             ) : direction === "they_pay" ? (
-              `Receive ${currencySymbols[selectedCurrency]}${parseFloat(amount || "0").toFixed(2)}`
+              isPartial
+                ? `Record ${currencySymbols[selectedCurrency]}${parsedAmount.toFixed(2)} partial payment`
+                : `Receive ${currencySymbols[selectedCurrency]}${parsedAmount.toFixed(2)}`
             ) : (
-              `Pay ${currencySymbols[selectedCurrency]}${parseFloat(amount || "0").toFixed(2)}`
+              isPartial
+                ? `Record ${currencySymbols[selectedCurrency]}${parsedAmount.toFixed(2)} partial payment`
+                : `Pay ${currencySymbols[selectedCurrency]}${parsedAmount.toFixed(2)}`
             )}
           </Button>
         </div>
