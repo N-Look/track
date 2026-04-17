@@ -160,6 +160,8 @@ export default async function BalancesPage() {
                       currency: a.currency,
                       category: a.category,
                     }))}
+                    splits={splitsByPerson[name] ?? []}
+                    debts={debtsByPerson[name] ?? []}
                   />
                 </div>
               )}

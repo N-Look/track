@@ -12,7 +12,8 @@ export async function settleUp(
   accountId: string,
   currency: CurrencyType,
   amount: number,
-  direction: "they_pay" | "you_pay"
+  direction: "they_pay" | "you_pay",
+  selectedItemIds?: string[]
 ) {
   const supabase = await createClient();
   const {
@@ -24,12 +25,19 @@ export async function settleUp(
 
   if (direction === "they_pay") {
     // They owe you -> mark splits as paid, credit your account
-    const { data: splits } = await supabase
+    let splitsQuery = supabase
       .from("splits")
       .select("*, transactions(currency, transaction_date)")
       .eq("debtor_name", personName)
-      .eq("is_paid", false)
-      .order("created_at", { ascending: true });
+      .eq("is_paid", false);
+
+    if (selectedItemIds && selectedItemIds.length > 0) {
+      splitsQuery = splitsQuery.in("id", selectedItemIds);
+    }
+
+    const { data: splits, error: splitsError } = await splitsQuery;
+
+    if (splitsError) throw new Error("Failed to fetch splits: " + splitsError.message);
 
     const matchingSplits = (splits ?? []).filter(
       (s) =>
@@ -40,22 +48,24 @@ export async function settleUp(
     for (const split of matchingSplits) {
       if (remaining <= 0) break;
       if (split.amount_owed <= remaining) {
-        await supabase
+        const { error } = await supabase
           .from("splits")
           .update({ is_paid: true, paid_at: new Date().toISOString() })
           .eq("id", split.id);
+        if (error) console.error("Failed to update split:", error);
         remaining -= split.amount_owed;
       } else {
-        await supabase
+        const { error } = await supabase
           .from("splits")
           .update({ amount_owed: split.amount_owed - remaining })
           .eq("id", split.id);
+        if (error) console.error("Failed to update split:", error);
         remaining = 0;
       }
     }
   } else {
     // You owe them -> mark debts as paid, debit your account
-    const { data: debts } = await supabase
+    let debtsQuery = supabase
       .from("debts")
       .select("*")
       .eq("creditor_name", personName)
@@ -63,20 +73,30 @@ export async function settleUp(
       .eq("is_paid", false)
       .order("created_at", { ascending: true });
 
+    if (selectedItemIds && selectedItemIds.length > 0) {
+      debtsQuery = debtsQuery.in("id", selectedItemIds);
+    }
+
+    const { data: debts, error: debtsError } = await debtsQuery;
+
+    if (debtsError) throw new Error("Failed to fetch debts: " + debtsError.message);
+
     let remaining = amount;
     for (const debt of debts ?? []) {
       if (remaining <= 0) break;
       if (debt.amount <= remaining) {
-        await supabase
+        const { error } = await supabase
           .from("debts")
           .update({ is_paid: true, paid_at: new Date().toISOString() })
           .eq("id", debt.id);
+        if (error) console.error("Failed to update debt:", error);
         remaining -= debt.amount;
       } else {
-        await supabase
+        const { error } = await supabase
           .from("debts")
           .update({ amount: debt.amount - remaining })
           .eq("id", debt.id);
+        if (error) console.error("Failed to update debt:", error);
         remaining = 0;
       }
     }

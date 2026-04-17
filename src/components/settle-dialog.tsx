@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { settleUp } from "@/lib/actions/settlements";
 import { Button } from "@/components/ui/button";
@@ -43,10 +43,14 @@ export function SettleDialog({
   personName,
   netByCurrency,
   accounts,
+  splits = [],
+  debts = [],
 }: {
   personName: string;
   netByCurrency: Record<string, number>;
   accounts: Account[];
+  splits?: any[];
+  debts?: any[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -56,10 +60,17 @@ export function SettleDialog({
   );
   const [accountId, setAccountId] = useState("");
   const [amount, setAmount] = useState("");
+  
+  // Track manually selected items
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
   const netAmount = netByCurrency[selectedCurrency] ?? 0;
   const direction = netAmount > 0 ? "they_pay" : "you_pay";
   const absAmount = Math.abs(netAmount);
+
+  // Filter items to current currency
+  const availableSplits = splits.filter((s) => (s.transactions?.currency ?? "CAD") === selectedCurrency);
+  const availableDebts = debts.filter((d) => d.currency === selectedCurrency);
 
   const parsedAmount = parseFloat(amount || "0");
   const isPartial = parsedAmount > 0 && parsedAmount < absAmount;
@@ -69,7 +80,6 @@ export function SettleDialog({
 
   const remaining = absAmount - parsedAmount;
 
-  // Filter accounts to matching currency
   const matchingAccounts = accounts.filter(
     (a) => a.currency === selectedCurrency
   );
@@ -81,6 +91,41 @@ export function SettleDialog({
       setSelectedCurrency(curr);
       setAmount(Math.abs(netByCurrency[curr] ?? 0).toFixed(2));
       setAccountId("");
+      setSelectedItemIds(new Set());
+    }
+  }
+
+  // Handle currency switch
+  function handleCurrencyChange(v: string) {
+    setSelectedCurrency(v);
+    setAmount(Math.abs(netByCurrency[v] ?? 0).toFixed(2));
+    setAccountId("");
+    setSelectedItemIds(new Set());
+  }
+
+  // Handle checkbox toggle
+  function toggleItem(id: string, itemAmount: number) {
+    const newSet = new Set(selectedItemIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedItemIds(newSet);
+    
+    // Automatically recalculate amount based on newly selected items
+    // Only if we actually have items selected, otherwise we revert to full amount or zero
+    if (newSet.size > 0) {
+      let sum = 0;
+      if (direction === "they_pay") {
+        availableSplits.forEach(s => { if (newSet.has(s.id)) sum += s.amount_owed; });
+      } else {
+        availableDebts.forEach(d => { if (newSet.has(d.id)) sum += d.amount; });
+      }
+      setAmount(sum.toFixed(2));
+    } else {
+      // If nothing selected, maybe reset to total
+      setAmount(Math.abs(netByCurrency[selectedCurrency] ?? 0).toFixed(2));
     }
   }
 
@@ -93,7 +138,8 @@ export function SettleDialog({
         accountId,
         selectedCurrency as CurrencyType,
         parsedAmount,
-        direction as "they_pay" | "you_pay"
+        direction as "they_pay" | "you_pay",
+        selectedItemIds.size > 0 ? Array.from(selectedItemIds) : undefined
       );
       toast.success(
         isPartial
@@ -117,12 +163,11 @@ export function SettleDialog({
           Settle
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Settle with {personName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Net balances summary */}
           <div className="glass-light rounded-xl p-3 space-y-1">
             {Object.entries(netByCurrency).map(([currency, net]) => (
               <div key={currency} className="flex justify-between text-sm">
@@ -150,11 +195,7 @@ export function SettleDialog({
               <Label>Currency</Label>
               <Select
                 value={selectedCurrency}
-                onValueChange={(v) => {
-                  setSelectedCurrency(v);
-                  setAmount(Math.abs(netByCurrency[v] ?? 0).toFixed(2));
-                  setAccountId("");
-                }}
+                onValueChange={handleCurrencyChange}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -170,12 +211,63 @@ export function SettleDialog({
             </div>
           )}
 
+          {/* Itemized Checkboxes */}
+          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+            <Label>Select specific items to settle (optional)</Label>
+            {direction === "they_pay" && availableSplits.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                {availableSplits.map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex items-start gap-2 text-sm p-2 rounded-lg border bg-background/50 hover:bg-accent/50 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedItemIds.has(s.id)}
+                      onChange={() => toggleItem(s.id, s.amount_owed)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary bg-background"
+                    />
+                    <div className="flex-1 flex justify-between gap-2">
+                      <span className="text-muted-foreground line-clamp-1">{s.transactions?.description || "Split"}</span>
+                      <span className="font-medium text-green-600">+{currencySymbols[selectedCurrency]}{Number(s.amount_owed).toFixed(2)}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+            
+            {direction === "you_pay" && availableDebts.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                {availableDebts.map((d) => (
+                  <label
+                    key={d.id}
+                    className="flex items-start gap-2 text-sm p-2 rounded-lg border bg-background/50 hover:bg-accent/50 cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedItemIds.has(d.id)}
+                      onChange={() => toggleItem(d.id, d.amount)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary bg-background"
+                    />
+                    <div className="flex-1 flex justify-between gap-2">
+                      <span className="text-muted-foreground line-clamp-1">{d.description || "Debt"}</span>
+                      <span className="font-medium text-orange-600">-{currencySymbols[selectedCurrency]}{Number(d.amount).toFixed(2)}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Amount</Label>
               <button
                 type="button"
-                onClick={() => setAmount(absAmount.toFixed(2))}
+                onClick={() => {
+                  setAmount(absAmount.toFixed(2));
+                  setSelectedItemIds(new Set()); // Reset selections if they override
+                }}
                 className="text-xs text-primary hover:underline font-medium"
               >
                 Use full {currencySymbols[selectedCurrency]}{absAmount.toFixed(2)}
