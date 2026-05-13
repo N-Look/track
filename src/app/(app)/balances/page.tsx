@@ -48,13 +48,49 @@ export default async function BalancesPage() {
     debtsByPerson[d.creditor_name].push(d);
   });
 
+  const getSplitDate = (s: any) => s.transactions?.transaction_date || "1970-01-01";
+  const getDebtDate = (d: any) => d.created_at || "1970-01-01";
+
   // All unique person names
   const allPeople = [
     ...new Set([
       ...Object.keys(splitsByPerson),
       ...Object.keys(debtsByPerson),
     ]),
-  ].sort();
+  ].sort((a, b) => {
+    let maxA = "1970-01-01";
+    let maxB = "1970-01-01";
+
+    (splitsByPerson[a] || []).forEach(s => {
+      const d = getSplitDate(s);
+      if (d > maxA) maxA = d;
+    });
+    (debtsByPerson[a] || []).forEach(d => {
+      const dt = getDebtDate(d);
+      if (dt > maxA) maxA = dt;
+    });
+
+    (splitsByPerson[b] || []).forEach(s => {
+      const d = getSplitDate(s);
+      if (d > maxB) maxB = d;
+    });
+    (debtsByPerson[b] || []).forEach(d => {
+      const dt = getDebtDate(d);
+      if (dt > maxB) maxB = dt;
+    });
+
+    return maxB.localeCompare(maxA);
+  });
+
+  // Sort splits and debts within each person by most recent
+  allPeople.forEach(person => {
+    if (splitsByPerson[person]) {
+      splitsByPerson[person].sort((a, b) => getSplitDate(b).localeCompare(getSplitDate(a)));
+    }
+    if (debtsByPerson[person]) {
+      debtsByPerson[person].sort((a, b) => getDebtDate(b).localeCompare(getDebtDate(a)));
+    }
+  });
 
   // Calculate net per person per currency
   // net = theyOweYou (splits) - youOweThem (debts)

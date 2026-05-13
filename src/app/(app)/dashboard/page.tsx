@@ -22,7 +22,7 @@ export default async function DashboardPage() {
       supabase.from("accounts").select("*").order("name"),
       supabase
         .from("splits")
-        .select("amount_owed, debtor_name, transactions(currency)")
+        .select("amount_owed, debtor_name, transactions(currency, transaction_date)")
         .eq("is_paid", false),
       supabase
         .from("transactions")
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
         .limit(5),
       supabase
         .from("debts")
-        .select("amount, currency, creditor_name")
+        .select("amount, currency, creditor_name, created_at")
         .eq("is_paid", false),
       supabase
         .from("transactions")
@@ -58,6 +58,14 @@ export default async function DashboardPage() {
   // Calculate per-person net balances
   const personBalances: Record<string, Record<string, number>> = {};
 
+  const personMaxDate: Record<string, string> = {};
+
+  const updateMaxDate = (name: string, newDate: string) => {
+    if (!personMaxDate[name] || newDate > personMaxDate[name]) {
+      personMaxDate[name] = newDate;
+    }
+  };
+
   (splits ?? []).forEach((s) => {
     const name = s.debtor_name;
     const currency =
@@ -65,6 +73,9 @@ export default async function DashboardPage() {
     if (!personBalances[name]) personBalances[name] = {};
     personBalances[name][currency] =
       (personBalances[name][currency] ?? 0) + s.amount_owed;
+
+    const dt = (s.transactions as any)?.transaction_date || "1970-01-01";
+    updateMaxDate(name, dt);
   });
 
   (debts ?? []).forEach((d) => {
@@ -72,9 +83,16 @@ export default async function DashboardPage() {
     if (!personBalances[name]) personBalances[name] = {};
     personBalances[name][d.currency] =
       (personBalances[name][d.currency] ?? 0) - d.amount;
+
+    const dt = d.created_at || "1970-01-01";
+    updateMaxDate(name, dt);
   });
 
-  const sortedPeople = Object.keys(personBalances).sort();
+  const sortedPeople = Object.keys(personBalances).sort((a, b) => {
+    const dateA = personMaxDate[a] || "1970-01-01";
+    const dateB = personMaxDate[b] || "1970-01-01";
+    return dateB.localeCompare(dateA);
+  });
 
   // Calculate total balances per currency (exclude credit cards and excluded accounts)
   const totalsByCurrency: Record<string, number> = {};
