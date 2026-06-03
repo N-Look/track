@@ -57,6 +57,7 @@ export type Database = {
           id: string
           is_paid: boolean | null
           linked_transaction_id: string | null
+          original_amount: number
           paid_at: string | null
           user_id: string
         }
@@ -69,6 +70,7 @@ export type Database = {
           id?: string
           is_paid?: boolean | null
           linked_transaction_id?: string | null
+          original_amount: number
           paid_at?: string | null
           user_id: string
         }
@@ -81,6 +83,7 @@ export type Database = {
           id?: string
           is_paid?: boolean | null
           linked_transaction_id?: string | null
+          original_amount?: number
           paid_at?: string | null
           user_id?: string
         }
@@ -100,6 +103,7 @@ export type Database = {
           debtor_name: string
           id: string
           is_paid: boolean | null
+          original_amount: number
           paid_at: string | null
           transaction_id: string | null
         }
@@ -108,6 +112,7 @@ export type Database = {
           debtor_name: string
           id?: string
           is_paid?: boolean | null
+          original_amount: number
           paid_at?: string | null
           transaction_id?: string | null
         }
@@ -116,6 +121,7 @@ export type Database = {
           debtor_name?: string
           id?: string
           is_paid?: boolean | null
+          original_amount?: number
           paid_at?: string | null
           transaction_id?: string | null
         }

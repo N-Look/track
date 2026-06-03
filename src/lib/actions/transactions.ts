@@ -62,6 +62,7 @@ export async function createTransaction(formData: FormData) {
       transaction_id: transaction.id,
       debtor_name: s.debtor_name,
       amount_owed: s.amount_owed,
+      original_amount: s.amount_owed,
     }));
     const { error: splitError } = await supabase
       .from("splits")
@@ -155,6 +156,7 @@ export async function updateTransactionSplits(
       transaction_id: transactionId,
       debtor_name: s.debtor_name,
       amount_owed: s.amount_owed,
+      original_amount: s.amount_owed,
     }));
     const { error } = await supabase.from("splits").insert(rows);
     if (error) throw new Error(error.message);

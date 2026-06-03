@@ -34,6 +34,7 @@ interface SplitWithTransaction {
   id: string;
   debtor_name: string;
   amount_owed: number;
+  original_amount: number;
   is_paid: boolean | null;
   paid_at: string | null;
   transaction_id: string | null;
@@ -139,6 +140,19 @@ export function SplitTable({
                     {split.amount_owed.toLocaleString("en-US", {
                       minimumFractionDigits: 2,
                     })}
+                    {split.original_amount !== split.amount_owed && (
+                      <div className="text-xs text-muted-foreground">
+                        of {symbol}
+                        {split.original_amount.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}{" "}
+                        ({symbol}
+                        {(split.original_amount - split.amount_owed).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}{" "}
+                        already paid)
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     {split.transactions?.description ?? "—"}
@@ -197,6 +211,19 @@ export function SplitTable({
                   minimumFractionDigits: 2,
                 })}
               </div>
+              {split.original_amount !== split.amount_owed && (
+                <div className="text-xs text-muted-foreground">
+                  of {symbol}
+                  {split.original_amount.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                  })}{" "}
+                  ({symbol}
+                  {(split.original_amount - split.amount_owed).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                  })}{" "}
+                  already paid)
+                </div>
+              )}
               <p className="text-sm text-muted-foreground">
                 {split.transactions?.description ?? "—"}
               </p>
@@ -239,6 +266,15 @@ export function SplitTable({
                 {dialogSplit.amount_owed.toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                 })}
+                {dialogSplit.original_amount !== dialogSplit.amount_owed && (
+                  <>
+                    {" "}(of {currencySymbols[splitCurrency] ?? "$"}
+                    {dialogSplit.original_amount.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                    })}{" "}
+                    originally)
+                  </>
+                )}
                 {" "}for &ldquo;{dialogSplit.transactions?.description ?? "—"}&rdquo;
               </p>
               <div className="space-y-2">

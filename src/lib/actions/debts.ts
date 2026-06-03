@@ -42,6 +42,7 @@ export async function createDebt(formData: FormData) {
     user_id: user.id,
     creditor_name,
     amount,
+    original_amount: amount,
     currency,
     description,
     linked_transaction_id: transaction.id,

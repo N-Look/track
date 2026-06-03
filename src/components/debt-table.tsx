@@ -134,6 +134,19 @@ export function DebtTable({
                     <span className="ml-1 text-xs text-muted-foreground">
                       {debt.currency}
                     </span>
+                    {debt.original_amount !== debt.amount && (
+                      <div className="text-xs text-muted-foreground">
+                        of {symbol}
+                        {debt.original_amount.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}{" "}
+                        ({symbol}
+                        {(debt.original_amount - debt.amount).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                        })}{" "}
+                        already paid)
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>{debt.description ?? "—"}</TableCell>
                   <TableCell>
@@ -203,6 +216,19 @@ export function DebtTable({
                   <Badge variant="destructive">Unpaid</Badge>
                 )}
               </div>
+              {debt.original_amount !== debt.amount && (
+                <div className="text-xs text-muted-foreground">
+                  of {symbol}
+                  {debt.original_amount.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                  })}{" "}
+                  ({symbol}
+                  {(debt.original_amount - debt.amount).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                  })}{" "}
+                  already paid)
+                </div>
+              )}
               <p className="text-sm text-muted-foreground">
                 {debt.description ?? "—"}
               </p>
